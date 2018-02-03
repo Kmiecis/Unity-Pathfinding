@@ -165,9 +165,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 242ecdf20a67626429335dbda87bb695, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  walls: {fileID: 1876849795}
   cave: {fileID: 1679801379}
-  wallHeight: 2.5
+  walls: {fileID: 1876849795}
+  wallHeight: 1.5
 --- !u!114 &462739260
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -181,10 +181,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   width: 100
   height: 100
-  passageWidth: 3
-  seed: 
-  useRandomSeed: 1
-  randomFillPercent: 48
+  passageWidth: 4
+  borderSize: 2
+  seed: Makaron
+  randomSeed: 0
+  fillPercent: 47
 --- !u!4 &462739261
 Transform:
   m_ObjectHideFlags: 0
@@ -309,13 +310,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 06cf7a0c85207a34b9cf6f6914ac0a71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  displayGrid: 0
   unwalkableMask:
     serializedVersion: 2
     m_Bits: 256
   gridPlane: {x: 100, y: 100}
   gridNodeRadius: 0.5
-  obstacleProximityPenalty: 10
+  displayGrid: 0
+  obstacleProximityPenalty: 0
   walkableRegions: []
 --- !u!4 &907206367
 Transform:
@@ -669,7 +670,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1679801377}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 462739261}
@@ -753,7 +754,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1876849793}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 462739261}

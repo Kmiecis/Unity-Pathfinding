@@ -9,7 +9,7 @@ public class RepositionObject : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		
+        Reposition();
 	}
     
     // Update is called once per frame
@@ -17,6 +17,9 @@ public class RepositionObject : MonoBehaviour {
         
 	}
 
+    /// <summary>
+    /// Function to reposition GameObject it is attached to, to nearest walkable Node from Grid.
+    /// </summary>
     public void Reposition()
     {
         if (gridManager.grid != null)

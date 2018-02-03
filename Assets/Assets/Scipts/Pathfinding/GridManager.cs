@@ -4,12 +4,10 @@ using UnityEngine;
 
 public class GridManager : MonoBehaviour
 {
-	public bool displayGrid;
 	public LayerMask unwalkableMask;
-
 	public Vector2 gridPlane;
-
 	public float gridNodeRadius = .5f;
+	public bool displayGrid;
 
     public Grid grid;
 
@@ -96,12 +94,11 @@ public class GridManager : MonoBehaviour
     /// <summary>
     /// Function to blur penalties values between walkable / unwalkable mask.
     /// </summary>
-    /// <param name="blurSize"></param>
     public void BlurPenaltyMap(int blurSize)
 	{
-		// kernelSize has to be odd number
+		// Calculate kernelSize as odd number
 		int kernelSize = blurSize * 2 + 1;
-		// how many squares are there between central square and the edge of the kernel
+		// Calculate how many squares are there between central square and the edge of the kernel
 		int kernelExtents = (kernelSize - 1) / 2;
 
 		int[,] penaltiesHorizontalPass = new int[grid.Size.X, grid.Size.Y];
@@ -112,16 +109,16 @@ public class GridManager : MonoBehaviour
 		{
 			for (int x = -kernelExtents; x <= kernelExtents; ++x)
 			{	
-				// preventing value to going off the grid
+				// Prevent value to go off the grid
 				int sampleX = Mathf.Clamp(x, 0, kernelExtents);
 				penaltiesHorizontalPass[0, y] += grid[sampleX, y].movementPenalty;
 			}
 
 			for (int x = 1; x < grid.Size.X; ++x)
 			{
-				// index of the node which is no longer inside of the kernel
+				// Index of the node which is no longer inside of the kernel
 				int removeIndex = Mathf.Clamp(x - kernelExtents - 1, 0, grid.Size.X);
-				// index of node that just entered the kernel
+				// Index of node that just entered the kernel
 				int addIndex = Mathf.Clamp(x + kernelExtents, 0, grid.Size.Y - 1);
 
 				penaltiesHorizontalPass[x, y] = penaltiesHorizontalPass[x - 1, y] - grid[removeIndex, y].movementPenalty + grid[addIndex, y].movementPenalty;
@@ -133,7 +130,7 @@ public class GridManager : MonoBehaviour
 		{
 			for (int y = -kernelExtents; y <= kernelExtents; ++y)
 			{
-				// preventing value to going off the grid
+				// Prevent value to go off the grid
 				int sampleY = Mathf.Clamp(y, 0, kernelExtents);
 				penaltiesVerticalPass[x, 0] += penaltiesHorizontalPass[x, sampleY];
 			}
@@ -143,9 +140,9 @@ public class GridManager : MonoBehaviour
 
 			for (int y = 1; y < grid.Size.Y; ++y)
 			{
-				// index of the node which is no longer inside of the kernel
+				// Index of the node which is no longer inside of the kernel
 				int removeIndex = Mathf.Clamp(y - kernelExtents - 1, 0, grid.Size.Y);
-				// index of node that just entered the kernel
+				// Index of node that just entered the kernel
 				int addIndex = Mathf.Clamp(y + kernelExtents, 0, grid.Size.Y - 1);
 
 				penaltiesVerticalPass[x, y] = penaltiesVerticalPass[x, y - 1] - penaltiesHorizontalPass[x, removeIndex] + penaltiesHorizontalPass[x, addIndex];
@@ -170,6 +167,7 @@ public class GridManager : MonoBehaviour
 
 		if (grid != null && displayGrid)
 		{
+            // Draw Gizmos for whole grid.
 			for (int x = 0; x < grid.Size.X; ++x)
             {
                 for (int y = 0; y < grid.Size.Y; ++y)

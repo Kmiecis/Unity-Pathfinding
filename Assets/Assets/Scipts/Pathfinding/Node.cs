@@ -26,18 +26,18 @@ public class Node : IHeapItem<Node>
 
     public struct Cost
     {
-        public int g, h;
+        // Cost from the start node to current.
+        public int g;
+        // Cost from the current to end node, estimated.
+        public int h;
+        // Cost g + h.
         public int f { get { return g + h; } }
     }
     public Cost cost;
-	//public int gCost;
-	//public int hCost;
-	//public int fCost { get { return gCost + hCost; } }
 
-    //int heapindex;
     public int HeapIndex { get; set; }
 
-    public Node parent;
+    public Node parent; // No parent by default.
 
 	public Node(bool walkable, Vector3 position, int x, int y, int movementPenalty)
 	{
@@ -48,12 +48,16 @@ public class Node : IHeapItem<Node>
 		this.movementPenalty = movementPenalty;
 	}
 
+    /// <summary>
+    /// Node specification of CompareTo method. Compares it's f costs or h costs.
+    /// Returns flipped value: 1 when lower and -1 when higher, because it's more valuable to us if it has lower value.
+    /// </summary>
 	public int CompareTo(Node node)
 	{
 		int compare = cost.f.CompareTo(node.cost.f);
 
 		if (compare == 0) compare = cost.h.CompareTo(node.cost.h);
 		
-		return -compare;    // CompareTo returns 1 if int is higher, but we want the opposite, thus -
+		return -compare;    // CompareTo returns 1 if this value is higher, but we want the opposite, thus -
     }
 }

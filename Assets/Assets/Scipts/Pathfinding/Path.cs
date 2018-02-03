@@ -15,6 +15,7 @@ public class Path {
 		this.turnBoundaries = new Line[lookPoints.Length];
 		this.finishLineIndex = turnBoundaries.Length - 1;
 
+        // Calculate turning lines.
 		Vector2 previousPoint = V3toV2(startPosition);
 		for (int i = 0; i < lookPoints.Length; ++i)
 		{

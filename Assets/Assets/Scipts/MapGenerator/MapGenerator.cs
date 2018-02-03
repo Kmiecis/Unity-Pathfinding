@@ -1,21 +1,25 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class MapGenerator : MonoBehaviour
 {
-    public int width;
-    public int height;
-    public int passageWidth = 3;
+    public int width;               // Width of generated map.
+    public int height;              // Height of generated map.
+    public int passageWidth = 3;    // Width of created passage between cave rooms.
+    public int borderSize = 2;      // Default map border increment.
 
-    public string seed;
-    public bool useRandomSeed;
+    public string seed;         // User defined seed.
+    public bool randomSeed;     // Random seed flag.
 
     [Range(45, 55)]
-    public int randomFillPercent;     // Specifies the percentage of fill the generated map.
+    public int fillPercent;     // Specifies the percentage of fill the generated map.
 
-    int[,] map;
+    const int wallThresholdSize = 0; // Wall regions with less than this walls will be removed.
+    const int roomThresholdSize = 50; // Room regions with less than this walls will be removed.
+
+    private int[,] map;
 
     private void Start()
     {
@@ -27,71 +31,145 @@ public class MapGenerator : MonoBehaviour
         
     }
 
+    /// <summary>
+    /// Function invoked to generate the map.
+    /// </summary>
     public void GenerateMap()
     {
         map = new int[width, height];
+
         RandomFillMap();
 
-        for (int i = 0; i < 1; ++i)
-        {
-            SmoothMap();
-        }
+        SmoothMap();
 
         ProcessMap();
 
-        int borderSize = 2;
-        int[,] borderedMap = new int[width + borderSize * 2, height + borderSize * 2];
-
-        for (int x = 0; x < borderedMap.GetLength(0); ++x)
-        {
-            for (int y = 0; y < borderedMap.GetLength(1); ++y)
-            {
-                if (x >= borderSize && x < width + borderSize && y >= borderSize && y < height + borderSize)
-                {
-                    borderedMap[x, y] = map[x - borderSize, y - borderSize];
-                }
-                else
-                {
-                    borderedMap[x, y] = 1;
-                }
-            }
-        }
-
         MeshGenerator meshGen = GetComponent<MeshGenerator>();
-        meshGen.GenerateMesh(borderedMap, 1);
+        meshGen.GenerateMesh(map, 1);
     }
 
-    void ProcessMap()
-    {   // Removes small regions.
-        List<List<Coord>> wallRegions = GetRegions(1);
-
-        int wallThresholdSize = 50; // Regions with less than this walls will be removed.
-
-        foreach (List<Coord> wallRegion in wallRegions)
+    /// <summary>
+    /// Function to fill map with random, 0 (empty space) or 1 (wall), values.
+    /// </summary>
+    void RandomFillMap()
+    {
+        if (randomSeed)
         {
-            if (wallRegion.Count < wallThresholdSize)
+            seed = Time.time.ToString();
+        }
+
+        for (int x = 0; x < width; ++x)
+        {
+            for (int y = 0; y < height; ++y)
             {
-                foreach (Coord tile in wallRegion)
+                // Every value outside of bordered size equals 1.
+                if (x <= borderSize || x >= width - 1 - borderSize || y <= borderSize || y >= height - 1 - borderSize)
                 {
-                    map[tile.tileX, tile.tileY] = 0;
+                    map[x, y] = 1;
+                }
+                // In other case randomly fill map.
+                else
+                {
+                    map[x, y] = (UnityEngine.Random.Range(0, 100) < fillPercent) ? 1 : 0;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Function to create rooms from total randomness.
+    /// </summary>
+    void SmoothMap()
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            for (int y = 0; y < height; ++y)
+            {
+                int neighbourWallTiles = GetSurroundingWallCount(x, y);
+
+                if (neighbourWallTiles > 4)
+                {
+                    map[x, y] = 1;
+                }
+                else if (neighbourWallTiles < 4)
+                {
+                    map[x, y] = 0;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Function to return number of walls around passed 'grid_x' and 'grid_y' on the map.
+    /// </summary>
+    int GetSurroundingWallCount(int grid_x, int grid_y)
+    {
+        int wallCount = 0;
+
+        for (int x = grid_x - 1; x <= grid_x + 1; ++x)
+        {
+            for (int y = grid_y - 1; y <= grid_y + 1; ++y)
+            {
+                // Check if wall or empty space only if within map range.
+                if (IsInMap(x, y))
+                {
+                    // Don't count itself, only neighbours.
+                    if (x != grid_x || y != grid_y)
+                    {
+                        wallCount += map[x, y];   // Map[x,y] only equals 0 or 1.
+                    }
+                }
+                // Otherwise count always as wall.
+                else
+                {
+                    ++wallCount;
                 }
             }
         }
 
-        List<List<Coord>> roomRegions = GetRegions(0);
-        int roomThresholdSize = 50; // Regions with less than this walls will be removed.
+        return wallCount;
+    }
 
-        List<Room> survivingRooms = new List<Room>();
+    /// <summary>
+    /// Simple check if input is within map range.
+    /// </summary>
+    bool IsInMap(int x, int y)
+    {
+        return x >= 0 && x < width && y >= 0 && y < height;
+    }
 
-        foreach (List<Coord> roomRegion in roomRegions)
+    /// <summary>
+    /// Function to further process the map by deleting small wall regions, small room regions and connecting rooms.
+    /// </summary>
+    void ProcessMap()
+    {
+        List<List<Tile>> wallRegions = GetRegions(1);
+        foreach (List<Tile> wallRegion in wallRegions)
         {
-            if (roomRegion.Count < roomThresholdSize)
+            // Get rid of all wall regions with wall count smaller than specified threshold.
+            if (wallRegion.Count < wallThresholdSize)
             {
-                foreach (Coord tile in roomRegion)
+                foreach (Tile tile in wallRegion)
                 {
-                    map[tile.tileX, tile.tileY] = 1;
+                    map[tile.x, tile.y] = 0;
                 }
             }
+        }
+
+        List<Room> survivingRooms = new List<Room>();
+        
+        List<List<Tile>> roomRegions = GetRegions(0);
+        foreach (List<Tile> roomRegion in roomRegions)
+        {
+            // Get rid of all room regions with wall count smaller than specified threshold.
+            if (roomRegion.Count < roomThresholdSize)
+            {
+                foreach (Tile tile in roomRegion)
+                {
+                    map[tile.x, tile.y] = 1;
+                }
+            }
+            // Add all other room regions to list of leftover rooms for further process.
             else
             {
                 survivingRooms.Add(new Room(roomRegion, map));
@@ -99,22 +177,100 @@ public class MapGenerator : MonoBehaviour
         }
 
         survivingRooms.Sort();
-        survivingRooms[0].isMainRoom = true;
-        survivingRooms[0].isAccessibleFromMainRoom = true;
+        // After sort, set biggest room as main room.
+        survivingRooms[0].isMain = true;
+        survivingRooms[0].isConnectedToMain = true;
 
+        // Connect all rooms from those that are left within map.
         ConnectClosestRooms(survivingRooms);
     }
 
-    void ConnectClosestRooms(List<Room> rooms, bool forceAccessibilityFromMainRoom = false)
+    /// <summary>
+    /// Function to return List of regions of given tile type, 0 or 1.
+    /// </summary>
+    List<List<Tile>> GetRegions(int tileType)
     {
-        List<Room> roomListA = new List<Room>();
-        List<Room> roomListB = new List<Room>();
+        List<List<Tile>> regions = new List<List<Tile>>();
 
-        if (forceAccessibilityFromMainRoom)
+        // Indicator if tile has been checked.
+        int[,] mapFlags = new int[width, height];
+
+        for (int x = 0; x < width; ++x)
+        {
+            for (int y = 0; y < height; ++y)
+            {
+                if (mapFlags[x, y] == 0 && map[x, y] == tileType)
+                {
+                    // Get new region from given tile.
+                    List<Tile> newRegion = GetRegionTiles(x, y);
+                    regions.Add(newRegion);
+
+                    // Assign tiles so they will not be taken into future consideration of possible regions.
+                    foreach (Tile tile in newRegion)
+                    {
+                        mapFlags[tile.x, tile.y] = 1;
+                    }
+                }
+            }
+        }
+
+        return regions;
+    }
+
+    /// <summary>
+    /// Function to return number of tiles counted as all neighbours of the same type as starting tile, until only other types are near.
+    /// </summary>
+    List<Tile> GetRegionTiles(int startX, int startY)
+    {
+        List<Tile> tiles = new List<Tile>();
+
+        // Indicator if tile has been checked.
+        int[,] mapFlags = new int[width, height];
+        mapFlags[startX, startY] = 1;
+
+        // Tile type based on starting position.
+        int tileType = map[startX, startY];
+
+        Queue<Tile> queue = new Queue<Tile>();
+        queue.Enqueue(new Tile(startX, startY));
+
+        // Count tiles until there is none of the same type.
+        while (queue.Count > 0)
+        {
+            Tile tile = queue.Dequeue();
+            tiles.Add(tile);
+
+            Action<int, int> ifEnqueue = (x, y) =>
+            {
+                if (IsInMap(x, y) && mapFlags[x, y] == 0 && map[x, y] == tileType)
+                {
+                    queue.Enqueue(new Tile(x, y));
+                    mapFlags[x, y] = 1;
+                }
+            };
+
+            ifEnqueue.Invoke(tile.x - 1, tile.y);
+            ifEnqueue.Invoke(tile.x, tile.y - 1);
+            ifEnqueue.Invoke(tile.x + 1, tile.y);
+            ifEnqueue.Invoke(tile.x, tile.y + 1);
+        }
+
+        return tiles;
+    }
+
+    /// <summary>
+    /// Function to connect closest rooms from the list of rooms.
+    /// </summary>
+    void ConnectClosestRooms(List<Room> rooms, bool forceConnectionToMainRoom = false)
+    {
+        List<Room> roomListA = new List<Room>();    // Rooms to be connected.
+        List<Room> roomListB = new List<Room>();    // Rooms connected.
+
+        if (forceConnectionToMainRoom)
         {
             foreach(Room room in rooms)
             {
-                if (room.isAccessibleFromMainRoom)
+                if (room.isConnectedToMain)
                 {
                     roomListB.Add(room);
                 }
@@ -131,34 +287,46 @@ public class MapGenerator : MonoBehaviour
         }
 
         int bestDistance = 0;
-        Coord bestTileA = new Coord();
-        Coord bestTileB = new Coord();
+        // Best tiles to be connected between two rooms.
+        Tile bestTileA = new Tile();
+        Tile bestTileB = new Tile();
+        // Best rooms to be connected.
         Room bestRoomA = new Room();
         Room bestRoomB = new Room();
         bool possibleConnectionFound = false;
 
+        // For every toom to be connected.
         foreach(Room roomA in roomListA)
         {
-            if (!forceAccessibilityFromMainRoom)
+            if (!forceConnectionToMainRoom)
             {
-                possibleConnectionFound = false;        // For each room A, reset.
+                // For each room A, skip connection and go to next room.
+                possibleConnectionFound = false;        
                 if (roomA.connectedRooms.Count > 0)
                 {
                     continue;
                 }
             }
+
             foreach(Room roomB in roomListB)
             {
-                if (roomA == roomB || roomA.IsConnected(roomB)) continue;       // Dont compare same rooms.
+                // Don't compare same rooms.
+                if (roomA == roomB || roomA.IsConnected(roomB))
+                {
+                    continue;
+                }
                 
+                // For each edge tiles within rooms search for smallest distance between them.
                 for (int tileIndexA = 0; tileIndexA < roomA.edgeTiles.Count; ++tileIndexA)
                 {
                     for (int tileIndexB = 0; tileIndexB < roomB.edgeTiles.Count; ++tileIndexB)
                     {
-                        Coord tileA = roomA.edgeTiles[tileIndexA];
-                        Coord tileB = roomB.edgeTiles[tileIndexB];
-                        int distanceBetweenRooms = (int)(Mathf.Pow(tileA.tileX - tileB.tileX, 2) + Mathf.Pow(tileA.tileY - tileB.tileY, 2));
+                        Tile tileA = roomA.edgeTiles[tileIndexA];
+                        Tile tileB = roomB.edgeTiles[tileIndexB];
 
+                        int distanceBetweenRooms = (int)(Mathf.Pow(tileA.x - tileB.x, 2) + Mathf.Pow(tileA.y - tileB.y, 2));
+
+                        // Indicate that possible connection has been found and always aim for best one.
                         if (distanceBetweenRooms < bestDistance || !possibleConnectionFound)
                         {
                             bestDistance = distanceBetweenRooms;
@@ -172,34 +340,43 @@ public class MapGenerator : MonoBehaviour
                 }
             }
 
-            if (possibleConnectionFound && !forceAccessibilityFromMainRoom)
+            // Connect rooms if connection found.
+            if (possibleConnectionFound && !forceConnectionToMainRoom)
             {
                 CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
             }
         }
-        if (possibleConnectionFound && forceAccessibilityFromMainRoom)
+
+        if (possibleConnectionFound && forceConnectionToMainRoom)
         {
             CreatePassage(bestRoomA, bestRoomB, bestTileA, bestTileB);
             ConnectClosestRooms(rooms, true);
         }
-        if (!forceAccessibilityFromMainRoom)
+
+        if (!forceConnectionToMainRoom)
         {
             ConnectClosestRooms(rooms, true);
         }
     }
 
-    void CreatePassage(Room roomA, Room roomB, Coord tileA, Coord tileB)
+    /// <summary>
+    /// Function to connect two room regions from two tiles, each for one.
+    /// </summary>
+    void CreatePassage(Room roomA, Room roomB, Tile tileA, Tile tileB)
     {
         Room.ConnectRooms(roomA, roomB);
 
-        List<Coord> line = GetLine(tileA, tileB);
-        foreach (Coord c in line)
+        List<Tile> line = GetLine(tileA, tileB);
+        foreach (Tile c in line)
         {
             DrawCircle(c, passageWidth);
         }
     }
 
-    void DrawCircle(Coord c, int r)
+    /// <summary>
+    /// Function to create circle of empty room around given tile and radius.
+    /// </summary>
+    void DrawCircle(Tile c, int r)
     {
         for (int x = -r; x <= r; ++x)
         {
@@ -207,9 +384,10 @@ public class MapGenerator : MonoBehaviour
             {
                 if (x * x + y * y <= r * r)     // Inside the circle.
                 {
-                    int drawX = c.tileX + x;
-                    int drawY = c.tileY + y;
-                    if (IsInMapRange(drawX, drawY))
+                    int drawX = c.x + x;
+                    int drawY = c.y + y;
+
+                    if (IsInMap(drawX, drawY))
                     {
                         map[drawX, drawY] = 0;
                     }
@@ -218,15 +396,18 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    List<Coord> GetLine(Coord from, Coord to)
+    /// <summary>
+    /// Function to get list of tiles that create line from one tile to another.
+    /// </summary>
+    List<Tile> GetLine(Tile from, Tile to)
     {
-        List<Coord> line = new List<Coord>();
+        List<Tile> line = new List<Tile>();
 
-        int x = from.tileX;
-        int y = from.tileY;
+        int x = from.x;
+        int y = from.y;
 
-        int dx = to.tileX - from.tileX;
-        int dy = to.tileY - from.tileY;
+        int dx = to.x - from.x;
+        int dy = to.y - from.y;
 
         bool inverted = false;
         int step = Math.Sign(dx);
@@ -248,7 +429,7 @@ public class MapGenerator : MonoBehaviour
         int gradientAccumulation = longest / 2;
         for (int i = 0; i < longest; ++i)
         {
-            line.Add(new Coord(x, y));
+            line.Add(new Tile(x, y));
             if (inverted)
             {
                 y += step;
@@ -276,227 +457,127 @@ public class MapGenerator : MonoBehaviour
         return line;
     }
 
-    Vector3 CoordToWorldPoint(Coord tile)
+    /// <summary>
+    /// Function to return world position from tile position.
+    /// </summary>
+    Vector3 CoordToWorldPoint(Tile tile)
     {
-        return new Vector3(-width * .5f + .5f + tile.tileX, 2, -height * .5f + .5f + tile.tileY);
+        return new Vector3(-width * .5f + .5f + tile.x, 2, -height * .5f + .5f + tile.y);
     }
 
-    List<List<Coord>> GetRegions(int tileType)
+    /// <summary>
+    /// Simple struct to hold information about tile position.
+    /// </summary>
+    struct Tile
     {
-        List<List<Coord>> regions = new List<List<Coord>>();
-        int[,] mapFlags = new int[width, height];
+        public int x;
+        public int y;
 
-        for (int x = 0; x < width; ++x)
+        public Tile(int x, int y)
         {
-            for (int y = 0; y < height; ++y)
-            {
-                if (mapFlags[x, y] == 0 && map[x, y] == tileType)
-                {
-                    List<Coord> newRegion = GetRegionTiles(x, y);
-                    regions.Add(newRegion);
-
-                    foreach (Coord tile in newRegion)
-                    {
-                        mapFlags[tile.tileX, tile.tileY] = 1;
-                    }
-                }
-            }
-        }
-
-        return regions;
-    }
-
-    List<Coord> GetRegionTiles(int startX, int startY)
-    {
-        List<Coord> tiles = new List<Coord>();
-        int[,] mapFlags = new int[width, height];
-        int tileType = map[startX, startY];
-
-        Queue<Coord> queue = new Queue<Coord>();
-        queue.Enqueue(new Coord(startX, startY));
-        mapFlags[startX, startY] = 1;
-
-        while (queue.Count > 0)
-        {
-            Coord tile = queue.Dequeue();
-            tiles.Add(tile);
-
-            for (int x = tile.tileX - 1; x <= tile.tileX + 1; ++x)
-            {
-                for (int y = tile.tileY - 1; y <= tile.tileY + 1; ++y)
-                {
-                    if (IsInMapRange(x, y) && (y == tile.tileY || x == tile.tileX))
-                    {
-                        if (mapFlags[x, y] == 0 && map[x, y] == tileType)
-                        {
-                            mapFlags[x, y] = 1;
-                            queue.Enqueue(new Coord(x, y));
-                        }
-                    }
-                }
-            }
-        }
-
-        return tiles;
-    }
-
-    bool IsInMapRange(int x, int y)
-    {
-        return x >= 0 && x < width && y >= 0 && y < height;
-    }
-
-    void RandomFillMap()
-    {
-        if (useRandomSeed) seed = Time.time.ToString();
-
-        System.Random pseudoRandom = new System.Random(seed.GetHashCode());
-
-        for (int x = 0; x < width; ++x)
-        {
-            for (int y = 0; y < height; ++y)
-            {
-                if (x == 0 || x == width - 1 || y == 0 || y == height - 1)
-                {
-                    map[x, y] = 1;
-                }
-                else
-                {
-                    map[x, y] = (pseudoRandom.Next(0, 100) < randomFillPercent) ? 1 : 0;
-                }
-            }
-        }
-    }
-
-    void SmoothMap()
-    {
-        for (int x = 0; x < width; ++x)
-        {
-            for (int y = 0; y < height; ++y)
-            {
-                int neighbourWallTiles = GetSurroundingWallCount(x, y);
-
-                if (neighbourWallTiles > 4)
-                {
-                    map[x, y] = 1;
-                }
-                else if (neighbourWallTiles < 4)
-                {
-                    map[x, y] = 0;
-                }
-            }
-        }
-    }
-
-    int GetSurroundingWallCount(int gridX, int gridY)
-    {
-        int wallCount = 0;
-
-        for (int neighbourX = gridX - 1; neighbourX <= gridX + 1; ++neighbourX)
-        {
-            for (int neighbourY = gridY - 1; neighbourY <= gridY + 1; ++neighbourY)
-            {
-                if (IsInMapRange(neighbourX, neighbourY))    // We have to be inside the map.
-                {
-                    if (neighbourX != gridX || neighbourY != gridY)
-                    {
-                        wallCount += map[neighbourX, neighbourY];   // Map[x,y] only equals 0 or 1.
-                    }
-                }
-                else
-                {
-                    ++wallCount;
-                }
-            }
-        }
-
-        return wallCount;
-    }
-
-    struct Coord
-    {
-        public int tileX;
-        public int tileY;
-
-        public Coord(int x, int y)
-        {
-            tileX = x;
-            tileY = y;
+            this.x = x;
+            this.y = y;
         }
     }
 
     class Room : IComparable<Room>
     {
-        public List<Coord> tiles;
-        public List<Coord> edgeTiles;
+        public List<Tile> tiles;
+        public List<Tile> edgeTiles;
         public List<Room> connectedRooms;
-        public int roomSize;
-        public bool isAccessibleFromMainRoom;
-        public bool isMainRoom;
+        public int size;
+
+        public bool isConnectedToMain;
+        public bool isMain;
 
         public Room()
         {
-
+            // No data.
         }
 
-        public Room(List<Coord> roomTiles, int[,] map)
+        public Room(List<Tile> tiles, int[,] map)
         {
-            tiles = roomTiles;
-            roomSize = tiles.Count;
+            this.tiles = tiles;
+            size = tiles.Count;
+
             connectedRooms = new List<Room>();
 
-            edgeTiles = new List<Coord>();
-            foreach (Coord tile in tiles)
+            edgeTiles = new List<Tile>();
+            foreach (Tile tile in tiles)
             {
-                for (int x = tile.tileX - 1; x <= tile.tileX + 1; ++x)
+                Action<int, int> addEdgeTile = (x, y) =>
                 {
-                    for (int y = tile.tileY - 1; y <= tile.tileY + 1; ++y)
+                    if (map[x, y] == 1)
+                        edgeTiles.Add(tile);
+                };
+                addEdgeTile.Invoke(tile.x - 1, tile.y);
+                addEdgeTile.Invoke(tile.x, tile.y - 1);
+                addEdgeTile.Invoke(tile.x + 1, tile.y);
+                addEdgeTile.Invoke(tile.x, tile.y + 1);
+                addEdgeTile.Invoke(tile.x, tile.y);
+
+                /*for (int x = tile.x - 1; x <= tile.x + 1; ++x)
+                {
+                    for (int y = tile.y - 1; y <= tile.y + 1; ++y)
                     {
-                        if (x == tile.tileX || y == tile.tileY)
+                        if (x == tile.x || y == tile.y)
                         {
-                            if (map[x,y] == 1)
+                            if (map[x, y] == 1)
                             {
                                 edgeTiles.Add(tile);
                             }
                         }
                     }
-                }
+                }*/
             }
         }
 
-        public void SetAccessibleFromMainRoom()
+        /// <summary>
+        /// Function to change flag to 'connected to main room' for this room and every connected to it.
+        /// </summary>
+        public void SetConnectedToMainRoom()
         {
-            if (!isAccessibleFromMainRoom)
+            if (!isConnectedToMain)
             {
-                isAccessibleFromMainRoom = true;
+                isConnectedToMain = true;
                 foreach (Room connectedRoom in connectedRooms)
                 {
-                    connectedRoom.SetAccessibleFromMainRoom();
+                    connectedRoom.SetConnectedToMainRoom();
                 }
             }
         }
 
+        /// <summary>
+        /// Function to connect rooms by references.
+        /// </summary>
         public static void ConnectRooms(Room roomA, Room roomB)
         {
-            if (roomA.isAccessibleFromMainRoom)
+            if (roomA.isConnectedToMain)
             {
-                roomB.SetAccessibleFromMainRoom();
+                roomB.SetConnectedToMainRoom();
             }
-            else if (roomB.isAccessibleFromMainRoom)
+            else if (roomB.isConnectedToMain)
             {
-                roomA.SetAccessibleFromMainRoom();
+                roomA.SetConnectedToMainRoom();
             }
             roomA.connectedRooms.Add(roomB);
             roomB.connectedRooms.Add(roomA);
         }
 
+        /// <summary>
+        /// Function to check whether room is connected to other room.
+        /// </summary>
         public bool IsConnected(Room otherRoom)
         {
             return connectedRooms.Contains(otherRoom);
         }
 
+        /// <summary>
+        /// CompareTo function overload.
+        /// </summary>
         public int CompareTo(Room otherRoom)
         {
-            return otherRoom.roomSize.CompareTo(roomSize);
+            return otherRoom.size.CompareTo(size);
         }
     }
 }
