@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Path {
+public class PathA {
 
 	public readonly Vector3[] lookPoints;
 	public readonly Line[] turnBoundaries;
 	public readonly int finishLineIndex;
 	public readonly int slowDownIndex;
 
-	public Path(Vector3[] waypoints, Vector3 startPosition, float turnDist, float stoppingDist)
+	public PathA(Vector3[] waypoints, Vector3 startPosition, float turnDist, float stoppingDist)
 	{
 		this.lookPoints = waypoints;
 		this.turnBoundaries = new Line[lookPoints.Length];

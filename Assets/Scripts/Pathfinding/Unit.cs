@@ -13,7 +13,7 @@ public class Unit : MonoBehaviour {
 	public float turnDist = 5;
 	public float stoppingDist = 10;
 
-	Path path;
+	PathA path;
     bool recalculatePath = false;
 
 	private void Start()
@@ -35,7 +35,7 @@ public class Unit : MonoBehaviour {
 	{
 		if (pathSuccessful)
 		{
-			this.path = new Path(waypoints, transform.position, turnDist, stoppingDist);
+			this.path = new PathA(waypoints, transform.position, turnDist, stoppingDist);
 			StopCoroutine("FollowPath");
 			StartCoroutine("FollowPath");
 		}
