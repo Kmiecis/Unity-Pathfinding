@@ -515,20 +515,6 @@ public class MapGenerator : MonoBehaviour
                 addEdgeTile.Invoke(tile.x + 1, tile.y);
                 addEdgeTile.Invoke(tile.x, tile.y + 1);
                 addEdgeTile.Invoke(tile.x, tile.y);
-
-                /*for (int x = tile.x - 1; x <= tile.x + 1; ++x)
-                {
-                    for (int y = tile.y - 1; y <= tile.y + 1; ++y)
-                    {
-                        if (x == tile.x || y == tile.y)
-                        {
-                            if (map[x, y] == 1)
-                            {
-                                edgeTiles.Add(tile);
-                            }
-                        }
-                    }
-                }*/
             }
         }
 
