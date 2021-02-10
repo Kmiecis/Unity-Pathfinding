@@ -178,7 +178,6 @@ public class MapGenerator : MonoBehaviour
 
         survivingRooms.Sort();
         // After sort, set biggest room as main room.
-        survivingRooms[0].isMain = true;
         survivingRooms[0].isConnectedToMain = true;
 
         // Connect all rooms from those that are left within map.
@@ -488,7 +487,6 @@ public class MapGenerator : MonoBehaviour
         public int size;
 
         public bool isConnectedToMain;
-        public bool isMain;
 
         public Room()
         {
