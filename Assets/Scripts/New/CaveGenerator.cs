@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Custom.Pathfinding
+namespace Custom.CaveGeneration
 {
-	public class CaveGenerator
+	public static class CaveGenerator
 	{
 		public const bool ROOM = false;
 		public const bool WALL = true;
@@ -218,10 +218,13 @@ namespace Custom.Pathfinding
 		{
 			var result = new List<Line>();
 
+			if (rooms.Count < 1)
+				return result;
+
+			var roomA = rooms[0];
+
 			while (rooms.Count > 1)
 			{
-				var roomA = rooms[0];
-
 				var line = new Line();
 				var distance = int.MaxValue;
 				var index = -1;
@@ -256,8 +259,10 @@ namespace Custom.Pathfinding
 					}
 				}
 
-				result.Add(line);
+				roomA.AddRange(rooms[index]);
 				rooms.RemoveAt(index);
+
+				result.Add(line);
 			}
 			
 			return result;
