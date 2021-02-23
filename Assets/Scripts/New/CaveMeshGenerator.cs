@@ -1,5 +1,6 @@
 ﻿using System;
 using Common;
+using UnityEngine;
 
 namespace Custom.CaveGeneration
 {
@@ -23,6 +24,9 @@ namespace Custom.CaveGeneration
 			var width = cave.GetLength(0);
 			var height = cave.GetLength(1);
 
+			var vertices = SquareUtility.Vertices;
+			var edgeVertices = MarchingSquares.EdgeVertices;
+
 			for (int y = 0; y < height - 1; y++)
 			{
 				for (int x = 0; x < width - 1; x++)
@@ -32,50 +36,27 @@ namespace Custom.CaveGeneration
 					var active2 = cave[x + 1, y + 1];
 					var active3 = cave[x + 1, y];
 
+					var configuration = MarchingSquares.GetConfiguration(active0, active1, active2, active3);
+					var triangles = MarchingSquares.Triangles[configuration];
 
+					var offset = new Vector2(x, y);
+					
+					for (int i = 0; i < triangles.Length && triangles[i] != -1; i += 3)
+					{
+						var t0 = triangles[i + 0];
+						var t1 = triangles[i + 1];
+						var t2 = triangles[i + 2];
+
+						var v0 = t0 < vertices.Length ? vertices[t0] : edgeVertices[t0 - vertices.Length];
+						var v1 = t1 < vertices.Length ? vertices[t1] : edgeVertices[t1 - vertices.Length];
+						var v2 = t2 < vertices.Length ? vertices[t2] : edgeVertices[t2 - vertices.Length];
+
+						meshBuilder.AddTriangle(v0 + offset, v1 + offset, v2 + offset);
+					}
 				}
 			}
 
 			return meshBuilder;
 		}
-
-		private static int GetConfiguration(bool v0, bool v1, bool v2, bool v3)
-		{
-			var result = 0;
-			if (v0) result += 8;
-			if (v1) result += 4;
-			if (v2) result += 2;
-			if (v3) result += 1;
-			return result;
-		}
-
-		/*
-		 __ __ 5 __ __
-		1             2
-		|             |
-		4             6
-		|             |
-		0__ __ 7 __ __3
-		*/
-
-		private static readonly int[,] TRIANGLES = new int[16, 13]
-		{
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 0
-			{  3,  7,  6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 1
-			{  2,  6,  5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 2
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 3
-			{  1,  5,  4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 4
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 5
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 6
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 7
-			{  0,  4,  7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 8
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 9
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 10
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 11
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 12
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 13
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 14
-			{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }  // 15
-		};
 	}
 }
