@@ -1,16 +1,19 @@
-﻿using Common;
-using System;
+﻿using System;
 using UnityEngine;
 
 namespace Custom
 {
 	public class MarchingSquares
 	{
-		public const float SIDE_LENGTH = SquareUtility.SIDE_LENGTH;
-		public const float CENTER_TO_SIDE = SquareUtility.CENTER_TO_SIDE;
+		public const float SIDE_LENGTH = 1.0f;
+		public const float CENTER_TO_SIDE = SIDE_LENGTH * 0.5f;
 
-		public static readonly Vector2[] EdgeVertices = new Vector2[]
+		public static readonly Vector2[] Vertices = new Vector2[]
 		{
+			new Vector2(-CENTER_TO_SIDE, -CENTER_TO_SIDE),
+			new Vector2(-CENTER_TO_SIDE, +CENTER_TO_SIDE),
+			new Vector2(+CENTER_TO_SIDE, +CENTER_TO_SIDE),
+			new Vector2(+CENTER_TO_SIDE, -CENTER_TO_SIDE),
 			new Vector2(-CENTER_TO_SIDE, 0.0f),
 			new Vector2(0.0f, +CENTER_TO_SIDE),
 			new Vector2(+CENTER_TO_SIDE, 0.0f),
@@ -37,7 +40,7 @@ namespace Custom
 			new int[]{  1,  2,  6,  1,  6,  4, -1, -1, -1, -1, -1, -1, -1 }, // 6 = 2 + 4
 			new int[]{  0,  1,  2,  0,  2,  6,  0,  6,  7, -1, -1, -1, -1 }, // 7 = 1 + 2 + 4
 			new int[]{  3,  7,  6, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }, // 8
-			new int[]{  0,  4,  6,  0,  6,  3, -1, -1, -1, -1, -1, -1, -1 }, // 9 = 1 + 8
+			new int[]{  3,  0,  4,  3,  4,  6, -1, -1, -1, -1, -1, -1, -1 }, // 9 = 1 + 8
 			new int[]{  1,  5,  6,  1,  6,  3,  1,  3,  7,  1,  7,  4, -1 }, // 10 = 2 + 8
 			new int[]{  3,  0,  1,  3,  1,  5,  3,  5,  6, -1, -1, -1, -1 }, // 11 = 1 + 2 + 8
 			new int[]{  2,  3,  7,  2,  7,  5, -1, -1, -1, -1, -1, -1, -1 }, // 12 = 4 + 8
