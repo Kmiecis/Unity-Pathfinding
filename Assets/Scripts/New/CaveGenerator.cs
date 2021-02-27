@@ -119,9 +119,10 @@ namespace Custom.CaveGeneration
 					)
 					{
 						var region = new List<Vector2Int>();
-
 						var toCheck = new Queue<Vector2Int>();
+
 						toCheck.Enqueue(new Vector2Int(x, y));
+						isChecked[x, y] = true;
 
 						while (toCheck.Count > 0)
 						{
@@ -134,8 +135,8 @@ namespace Custom.CaveGeneration
 
 								if (
 									mapRange.Contains(neighbour) &&
-									map[neighbour.x, neighbour.y] == type &&
-									!isChecked[neighbour.x, neighbour.y]
+									!isChecked[neighbour.x, neighbour.y] &&
+									map[neighbour.x, neighbour.y] == type
 								)
 								{
 									toCheck.Enqueue(neighbour);
