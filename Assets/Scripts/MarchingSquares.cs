@@ -10,14 +10,14 @@ namespace Custom
 
 		public static readonly Vector2[] Vertices = new Vector2[]
 		{
-			new Vector2(-CENTER_TO_SIDE, -CENTER_TO_SIDE),
-			new Vector2(-CENTER_TO_SIDE, +CENTER_TO_SIDE),
-			new Vector2(+CENTER_TO_SIDE, +CENTER_TO_SIDE),
-			new Vector2(+CENTER_TO_SIDE, -CENTER_TO_SIDE),
-			new Vector2(-CENTER_TO_SIDE, 0.0f),
-			new Vector2(0.0f, +CENTER_TO_SIDE),
-			new Vector2(+CENTER_TO_SIDE, 0.0f),
-			new Vector2(0.0f, -CENTER_TO_SIDE)
+			new Vector2(0.0f, 0.0f),
+			new Vector2(0.0f, SIDE_LENGTH),
+			new Vector2(SIDE_LENGTH, SIDE_LENGTH),
+			new Vector2(SIDE_LENGTH, 0.0f),
+			new Vector2(0.0f, SIDE_LENGTH * 0.5f),
+			new Vector2(SIDE_LENGTH * 0.5f, SIDE_LENGTH),
+			new Vector2(SIDE_LENGTH, SIDE_LENGTH * 0.5f),
+			new Vector2(SIDE_LENGTH * 0.5f, 0.0f)
 		};
 
 		/*

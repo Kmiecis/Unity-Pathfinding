@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Common;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
-using Common;
 
 namespace Custom.Pathfinding
 {
@@ -9,8 +10,8 @@ namespace Custom.Pathfinding
 		private const int TRAVERSE_COST = 10;
 		private const int DISTANCE_COST = 10;
 		private const int DIAGONAL_COST = 14;
-
-		public static List<PathNode> Generate(bool[,] map, Vector2Int current, Vector2Int target)
+		
+		public static List<PathNode> Generate(bool[,] map, Vector2Int start, Vector2Int target)
 		{
 			var result = new List<PathNode>();
 
@@ -23,30 +24,37 @@ namespace Custom.Pathfinding
 			{
 				for (int x = 0; x < width; x++)
 				{
-					if (map[x, y])
+					if (!map[x, y])
 					{
-						var node = new PathNode(x, y, TRAVERSE_COST);
-
-						grid[x + y * width] = node;
+						grid[x + y * width] = new PathNode(x, y, TRAVERSE_COST);
 					}
 				}
 			}
 
-			var currentIndex = current.x + current.y * width;
+			var startIndex = start.x + start.y * width;
 			var targetIndex = target.x + target.y * width;
+
+			var startNode = grid[startIndex];
+			if (startNode == null)
+				return result;
+
 			var targetNode = grid[targetIndex];
+			if (targetNode == null)
+				return result;
+
+			startNode.cumulativeCost = 0;
 
 			var remainingList = new List<int>();
 			var checkedArray = new bool[width * height];
 			var directions = GetDirections();
 
-			remainingList.Add(currentIndex);
+			remainingList.Add(startIndex);
 			while (remainingList.Count > 0)
 			{
 				int currentNodeIndex = GetLowestTotalCostNodeIndex(remainingList, grid);
 
 				if (currentNodeIndex == targetIndex)
-					break; // Reached destination
+					break;
 				
 				if (remainingList.TryGetIndexOf(currentNodeIndex, out int index))
 				{
@@ -89,15 +97,29 @@ namespace Custom.Pathfinding
 				}
 			}
 
-			if (targetNode.prev != null)
+			var node = targetNode;
+			while (node.prev != null)
 			{
-				var node = targetNode;
-				while (node.prev != null)
+				if (result.Count > 1)
+				{
+					var last = result[result.Count - 1];
+					if (
+						Math.Sign(node.x - last.x) != Math.Sign(node.prev.x - node.x) ||
+						Math.Sign(node.y - last.y) != Math.Sign(node.prev.y - node.y)
+					)
+					{
+						result.Add(node);
+					}
+				}
+				else
 				{
 					result.Add(node);
-					node = node.prev;
 				}
 
+				node = node.prev;
+			}
+			if (result.Count > 0)
+			{
 				result.Add(node);
 			}
 
@@ -106,16 +128,17 @@ namespace Custom.Pathfinding
 		
 		private static int GetLowestTotalCostNodeIndex(List<int> remaining, PathNode[] nodes)
 		{
-			var result = 0;
-
+			var result = remaining[0];
 			var nodeA = nodes[result];
+
 			for (int i = 1; i < remaining.Count; i++)
 			{
-				var nodeB = nodes[remaining[i]];
+				var current = remaining[i];
+				var nodeB = nodes[current];
 				if (nodeA.TotalCost > nodeB.TotalCost)
 				{
+					result = current;
 					nodeA = nodeB;
-					result = i;
 				}
 			}
 
