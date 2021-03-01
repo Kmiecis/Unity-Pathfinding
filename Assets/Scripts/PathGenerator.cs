@@ -56,7 +56,7 @@ namespace Custom.Pathfinding
 				if (currentNodeIndex == targetIndex)
 					break;
 				
-				if (remainingList.TryGetIndexOf(currentNodeIndex, out int index))
+				if (remainingList.TryIndexOf(currentNodeIndex, out int index))
 				{
 					remainingList.SwapLast(index);
 					remainingList.RemoveLast();
