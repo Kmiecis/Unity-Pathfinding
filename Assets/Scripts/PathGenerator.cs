@@ -11,9 +11,9 @@ namespace Custom.Pathfinding
 		private const int DISTANCE_COST = 10;
 		private const int DIAGONAL_COST = 14;
 		
-		public static List<PathNode> Generate(bool[,] map, Vector2Int start, Vector2Int target)
+		public static List<Vector2Int> Generate(bool[,] map, Vector2Int start, Vector2Int target)
 		{
-			var result = new List<PathNode>();
+			var result = new List<Vector2Int>();
 
 			var width = map.GetLength(0);
 			var height = map.GetLength(1);
@@ -90,6 +90,7 @@ namespace Custom.Pathfinding
 						neighbourNode.prev = currentNode;
 						neighbourNode.cumulativeCost = totalCumulativeCost;
 						neighbourNode.distanceCost = GetDistanceCost(neighbourNode, targetNode);
+						neighbourNode.totalCost = neighbourNode.cumulativeCost + neighbourNode.distanceCost;
 
 						if (!remainingList.Contains(neighbourNodeIndex))
 							remainingList.Add(neighbourNodeIndex);
@@ -108,19 +109,19 @@ namespace Custom.Pathfinding
 						Math.Sign(node.y - last.y) != Math.Sign(node.prev.y - node.y)
 					)
 					{
-						result.Add(node);
+						result.Add(new Vector2Int(node.x, node.y));
 					}
 				}
 				else
 				{
-					result.Add(node);
+					result.Add(new Vector2Int(node.x, node.y));
 				}
 
 				node = node.prev;
 			}
 			if (result.Count > 0)
 			{
-				result.Add(node);
+				result.Add(new Vector2Int(node.x, node.y));
 			}
 
 			return result;
@@ -135,7 +136,8 @@ namespace Custom.Pathfinding
 			{
 				var current = remaining[i];
 				var nodeB = nodes[current];
-				if (nodeA.TotalCost > nodeB.TotalCost)
+
+				if (nodeA.totalCost > nodeB.totalCost)
 				{
 					result = current;
 					nodeA = nodeB;

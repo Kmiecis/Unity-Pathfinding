@@ -1,5 +1,4 @@
-﻿using Custom.Pathfinding;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,13 +10,13 @@ namespace Custom
 #if UNITY_EDITOR
 		[SerializeField] protected bool m_ShowPathGizmo = true;
 #endif
-		private List<PathNode> m_CurrentPath = new List<PathNode>();
+		private List<Vector2Int> m_CurrentPath = new List<Vector2Int>();
 		private Vector2 m_CurrentScale;
 		private int m_CurrentIndex;
 
 		private Coroutine m_FollowPathRoutine;
 
-		public void SetPath(List<PathNode> path, Vector2 scale)
+		public void SetPath(List<Vector2Int> path, Vector2 scale)
 		{
 			m_CurrentPath = path;
 			m_CurrentScale = scale;

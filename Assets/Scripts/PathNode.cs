@@ -11,10 +11,9 @@ namespace Custom.Pathfinding
 		public int traverseCost;
 		public int cumulativeCost; // G cost
 		public int distanceCost; // H cost
+		public int totalCost; // F cost
 
 		public PathNode prev = null;
-
-		public int TotalCost => cumulativeCost + distanceCost; // F cost
 
 		public PathNode(int x, int y, int traverseCost)
 		{
