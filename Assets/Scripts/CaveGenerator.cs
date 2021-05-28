@@ -129,7 +129,7 @@ namespace Custom.CaveGeneration
 							var current = toCheck.Dequeue();
 							region.Add(current);
 
-							foreach (var direction in CartesianUtility.Directions2D)
+							foreach (var direction in Axes.All2D)
 							{
 								var neighbour = current + direction;
 
@@ -196,7 +196,7 @@ namespace Custom.CaveGeneration
 
 				foreach (var tile in region)
 				{
-					foreach (var direction in CartesianUtility.Directions2D)
+					foreach (var direction in Axes.All2D)
 					{
 						var neighbour = tile + direction;
 						if (

@@ -151,7 +151,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_ShowTargetGizmo: 1
-  m_ShowCaveMapGizmo: 0
+  m_ShowCaveMapGizmo: 1
   m_CaveMeshFilter: {fileID: 2032432733}
   m_GroundTransform: {fileID: 1017568539}
   unitBehaviour: {fileID: 1180337837}

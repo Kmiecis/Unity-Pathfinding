@@ -28,7 +28,7 @@ namespace Custom.CaveGeneration
 			
 			var wallOffset = new Vector3(0.0f, 0.0f, input.wallHeight);
 
-			var vertices = MarchingSquares.Vertices;
+            var vertices = MarchingSquares.Vertices().Scale(input.squareSize, input.squareSize);
 
 			for (int y = 0; y < height - 1; y++)
 			{
@@ -51,9 +51,9 @@ namespace Custom.CaveGeneration
 						var t1 = triangles[i + 1];
 						var t2 = triangles[i + 2];
 
-						var v0 = (Vector3)vertices[t0] * input.squareSize + offset;
-						var v1 = (Vector3)vertices[t1] * input.squareSize + offset;
-						var v2 = (Vector3)vertices[t2] * input.squareSize + offset;
+						var v0 = (Vector3)vertices[t0] + offset;
+						var v1 = (Vector3)vertices[t1] + offset;
+						var v2 = (Vector3)vertices[t2] + offset;
 
 						meshBuilder.AddTriangle(v0, v1, v2);
 					}
@@ -63,8 +63,8 @@ namespace Custom.CaveGeneration
 						var wt0 = triangles[i - 1];
 						var wt1 = triangles[i - 2];
 
-						var wv0 = (Vector3)vertices[wt0] * input.squareSize + offset;
-						var wv1 = (Vector3)vertices[wt1] * input.squareSize + offset;
+						var wv0 = (Vector3)vertices[wt0] + offset;
+						var wv1 = (Vector3)vertices[wt1] + offset;
 						var wv2 = wv1 + wallOffset;
 						var wv3 = wv0 + wallOffset;
 
