@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using Common;
+using Common.Extensions;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,44 +9,42 @@ namespace Custom
     public class UnitBehaviour : MonoBehaviour
     {
         public float speed = 1.0f;
-#if UNITY_EDITOR
-        [SerializeField] protected bool m_ShowPathGizmo = true;
-#endif
-        private List<Vector2Int> m_CurrentPath = new List<Vector2Int>();
-        private Vector2 m_CurrentScale;
-        private int m_CurrentIndex;
 
-        private Coroutine m_FollowPathRoutine;
+        private List<Vector2Int> _currentPath = new List<Vector2Int>();
+        private Vector2 _currentScale;
+        private int _currentIndex;
+
+        private Coroutine _followPathRoutine;
 
         public void SetPath(List<Vector2Int> path, Vector2 scale)
         {
-            m_CurrentPath = path;
-            m_CurrentScale = scale;
-            m_CurrentIndex = 0;
+            _currentPath = path;
+            _currentScale = scale;
+            _currentIndex = 0;
         }
 
         public void StartFollowPath()
         {
             StopFollowPath();
-            m_FollowPathRoutine = StartCoroutine(FollowPathCoroutine());
+            _followPathRoutine = StartCoroutine(FollowPathCoroutine());
         }
 
         public void StopFollowPath()
         {
-            if (m_FollowPathRoutine != null)
-                StopCoroutine(m_FollowPathRoutine);
+            if (_followPathRoutine != null)
+                StopCoroutine(_followPathRoutine);
         }
 
-        public bool HasReachedDestination => m_CurrentIndex == m_CurrentPath.Count;
+        public bool HasReachedDestination => _currentIndex == _currentPath.Count;
 
         private IEnumerator FollowPathCoroutine()
         {
-            while (m_CurrentIndex < m_CurrentPath.Count)
+            while (_currentIndex < _currentPath.Count)
             {
-                var next = m_CurrentPath[m_CurrentPath.Count - 1 - m_CurrentIndex];
+                var next = _currentPath[_currentPath.Count - 1 - _currentIndex];
 
                 var fromPosition = transform.position;
-                var toPosition = new Vector3(next.x * m_CurrentScale.x, next.y * m_CurrentScale.y);
+                var toPosition = new Vector3(next.x * _currentScale.x, next.y * _currentScale.y);
 
                 var t = 0.0f;
                 var f = 1.0f / (toPosition - fromPosition).magnitude;
@@ -59,31 +59,30 @@ namespace Custom
                 }
 
                 transform.position = toPosition;
-                m_CurrentIndex++;
+                _currentIndex++;
 
                 yield return null;
             }
         }
 
 #if UNITY_EDITOR
+        [Header("Gizmos")]
+        [SerializeField]
+        protected bool _drawPath = true;
+
         private void OnDrawGizmos()
         {
-            if (!m_ShowPathGizmo)
-                return;
-
-            Gizmos.color = Color.green;
-
-            for (int i = 1; m_CurrentPath != null && i < m_CurrentPath.Count; i++)
+            if (_drawPath && _currentPath != null)
             {
-                var prevNode = m_CurrentPath[i - 1];
-                var currentNode = m_CurrentPath[i];
+                var positions = new Vector3[_currentPath.Count];
+                for (int i = 0; i < _currentPath.Count; ++i)
+                {
+                    positions[i] = (_currentPath[i] * _currentScale).XY_() + Vector3.back;
+                }
 
-                var prevPosition = new Vector3(prevNode.x * m_CurrentScale.x, prevNode.y * m_CurrentScale.y) + Vector3.back;
-                var currentPosition = new Vector3(currentNode.x * m_CurrentScale.x, currentNode.y * m_CurrentScale.y) + Vector3.back;
-
-                Gizmos.DrawLine(prevPosition, currentPosition);
-                Gizmos.DrawWireSphere(prevPosition, 0.2f);
-                Gizmos.DrawWireSphere(currentPosition, 0.2f);
+                Gizmos.color = Color.green;
+                GizmosUtility.DrawLines(positions);
+                GizmosUtility.DrawWireSpheres(positions, 0.2f);
             }
         }
 #endif

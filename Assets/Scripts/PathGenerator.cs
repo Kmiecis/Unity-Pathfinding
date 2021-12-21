@@ -8,156 +8,7 @@ namespace Custom.Pathfinding
 {
     public static class PathGenerator
     {
-        private const int TRAVERSE_COST = 10;
-        private const int DISTANCE_COST = 10;
-        private const int DIAGONAL_COST = 14;
-
-        public static List<Vector2Int> Generate(bool[,] map, Vector2Int start, Vector2Int target)
-        {
-            var result = new List<Vector2Int>();
-
-            var width = map.GetLength(0);
-            var height = map.GetLength(1);
-
-            var gridRange = new Range2Int(0, 0, width - 1, height - 1);
-            var grid = new PathNode[width * height];
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    if (!map[x, y])
-                    {
-                        grid[x + y * width] = new PathNode(x, y, TRAVERSE_COST);
-                    }
-                }
-            }
-
-            var startIndex = start.x + start.y * width;
-            var targetIndex = target.x + target.y * width;
-
-            var startNode = grid[startIndex];
-            if (startNode == null)
-                return result;
-
-            var targetNode = grid[targetIndex];
-            if (targetNode == null)
-                return result;
-
-            startNode.cumulativeCost = 0;
-
-            var remainingList = new List<int>();
-            var checkedArray = new bool[width * height];
-            var directions = GetDirections();
-
-            remainingList.Add(startIndex);
-            while (remainingList.Count > 0)
-            {
-                int currentNodeIndex = GetLowestTotalCostNodeIndex(remainingList, grid);
-
-                if (currentNodeIndex == targetIndex)
-                    break;
-
-                if (remainingList.TryIndexOf(currentNodeIndex, out int index))
-                {
-                    remainingList.SwapLast(index);
-                    remainingList.RemoveLast();
-                }
-
-                checkedArray[currentNodeIndex] = true;
-
-                var currentNode = grid[currentNodeIndex];
-
-                for (int i = 0; i < directions.Length; i++)
-                {
-                    var direction = directions[i];
-
-                    var neighbourX = currentNode.x + direction.x;
-                    var neighbourY = currentNode.y + direction.y;
-
-                    if (!gridRange.Contains(neighbourX, neighbourY))
-                        continue;
-
-                    var neighbourNodeIndex = neighbourX + neighbourY * width;
-                    if (checkedArray[neighbourNodeIndex])
-                        continue;
-
-                    var neighbourNode = grid[neighbourNodeIndex];
-                    if (neighbourNode == null)
-                        continue;
-
-                    var totalCumulativeCost = currentNode.cumulativeCost + GetDistanceCost(currentNode, neighbourNode) + neighbourNode.traverseCost;
-                    if (totalCumulativeCost < neighbourNode.cumulativeCost)
-                    {
-                        neighbourNode.prev = currentNode;
-                        neighbourNode.cumulativeCost = totalCumulativeCost;
-                        neighbourNode.distanceCost = GetDistanceCost(neighbourNode, targetNode);
-                        neighbourNode.totalCost = neighbourNode.cumulativeCost + neighbourNode.distanceCost;
-
-                        if (!remainingList.Contains(neighbourNodeIndex))
-                            remainingList.Add(neighbourNodeIndex);
-                    }
-                }
-            }
-
-            var node = targetNode;
-            while (node.prev != null)
-            {
-                if (result.Count > 1)
-                {
-                    var last = result[result.Count - 1];
-                    if (
-                        Math.Sign(node.x - last.x) != Math.Sign(node.prev.x - node.x) ||
-                        Math.Sign(node.y - last.y) != Math.Sign(node.prev.y - node.y)
-                    )
-                    {
-                        result.Add(new Vector2Int(node.x, node.y));
-                    }
-                }
-                else
-                {
-                    result.Add(new Vector2Int(node.x, node.y));
-                }
-
-                node = node.prev;
-            }
-            if (result.Count > 0)
-            {
-                result.Add(new Vector2Int(node.x, node.y));
-            }
-
-            return result;
-        }
-
-        private static int GetLowestTotalCostNodeIndex(List<int> remaining, PathNode[] nodes)
-        {
-            var result = remaining[0];
-            var nodeA = nodes[result];
-
-            for (int i = 1; i < remaining.Count; i++)
-            {
-                var current = remaining[i];
-                var nodeB = nodes[current];
-
-                if (nodeA.totalCost > nodeB.totalCost)
-                {
-                    result = current;
-                    nodeA = nodeB;
-                }
-            }
-
-            return result;
-        }
-
-        private static int GetDistanceCost(PathNode a, PathNode b)
-        {   // Can be abstracted
-            int dx = Mathf.Abs(b.x - a.x);
-            int dy = Mathf.Abs(b.y - a.y);
-            if (dx > dy)
-                return DIAGONAL_COST * dy + DISTANCE_COST * (dx - dy);
-            return DIAGONAL_COST * dx + DISTANCE_COST * (dy - dx);
-        }
-
-        private static readonly Vector2Int[] Directions = new Vector2Int[]
+        private static readonly Vector2Int[] _directions = new Vector2Int[]
         {
             new Vector2Int(-1, +0),
             new Vector2Int(+0, +1),
@@ -169,9 +20,144 @@ namespace Custom.Pathfinding
             new Vector2Int(+1, -1)
         };
 
-        private static Vector2Int[] GetDirections()
-        {   // Can be abstracted
-            return Directions;
+        public static bool TryFindPath(bool[,] map, int startX, int startY, int targetX, int targetY, out PathNode node)
+        {
+            node = default;
+
+            if (!map[startX, startY] || !map[targetX, targetY])
+                return false;
+
+            var width = map.GetWidth();
+            var height = map.GetHeight();
+
+            var grid = new PathNode[width, height];
+            var gridRange = new Range2Int(0, 0, width - 1, height - 1);
+
+            var startNode = grid[startX, startY] = new PathNode(startX, startY) { gScore = 0 };
+            var targetNode = grid[targetX, targetY] = node = new PathNode(targetX, targetY);
+
+            const byte NODE_ADDED = 1;
+            const byte NODE_CHECKED = 2;
+            var checkedArray = new byte[width, height];
+
+            var remaining = new List<PathNode>() { startNode };
+            while (remaining.Count > 0)
+            {
+                var currentNodeIndex = GetLowestTotalCostNodeIndex(remaining);
+                var currentNode = remaining[currentNodeIndex];
+
+                if (currentNode == targetNode)
+                    break;
+
+                remaining.SwapLast(currentNodeIndex);
+                remaining.RemoveLast();
+
+                checkedArray[currentNode.x, currentNode.y] = NODE_CHECKED;
+
+                for (int i = 0; i < _directions.Length; i++)
+                {
+                    var direction = _directions[i];
+
+                    var neighbourX = currentNode.x + direction.x;
+                    var neighbourY = currentNode.y + direction.y;
+
+                    if (!gridRange.Contains(neighbourX, neighbourY))
+                        continue;
+
+                    if (checkedArray[neighbourX, neighbourY] == NODE_CHECKED)
+                        continue;
+
+                    if (!map[neighbourX, neighbourY])
+                        continue;
+
+                    var neighbourNode = grid[neighbourX, neighbourY];
+                    if (neighbourNode == null)
+                        neighbourNode = grid[neighbourX, neighbourY] = new PathNode(neighbourX, neighbourY);
+
+                    var totalCumulativeCost = currentNode.gScore + GetDistanceCost(currentNode, neighbourNode);
+                    if (totalCumulativeCost < neighbourNode.gScore)
+                    {
+                        neighbourNode.link = currentNode;
+                        neighbourNode.gScore = totalCumulativeCost;
+                        neighbourNode.fScore = totalCumulativeCost + GetDistanceCost(neighbourNode, targetNode);
+
+                        if (checkedArray[neighbourX, neighbourY] < NODE_ADDED)
+                        {
+                            remaining.Add(neighbourNode);
+                            checkedArray[neighbourX, neighbourY] = NODE_ADDED;
+                        }
+                    }
+                }
+            }
+
+            return node.link != null;
+        }
+
+        private static int GetLowestTotalCostNodeIndex(List<PathNode> nodes)
+        {   // Switching this with priority queue could reduce running time but add complexity. To consider.
+            var result = 0;
+            var nodeA = nodes[result];
+
+            for (int i = 1; i < nodes.Count; i++)
+            {
+                var nodeB = nodes[i];
+
+                if (nodeA.fScore > nodeB.fScore)
+                {
+                    result = i;
+                    nodeA = nodeB;
+                }
+            }
+
+            return result;
+        }
+
+        private static int GetDistanceCost(PathNode a, PathNode b)
+        {
+            int dx = Math.Abs(b.x - a.x);
+            int dy = Math.Abs(b.y - a.y);
+            if (dx > dy)
+                return 14 * dy + 10 * (dx - dy);
+            return 14 * dx + 10 * (dy - dx);
+        }
+
+        public static List<Vector2Int> ToPath(PathNode node)
+        {
+            var result = new List<Vector2Int>();
+            while (node != null)
+            {
+                result.Add(new Vector2Int(node.x, node.y));
+                node = node.link;
+            }
+            return result;
+        }
+
+        public static List<Vector2Int> ToLeanPath(PathNode node)
+        {
+            var result = new List<Vector2Int>();
+
+            while (node != null)
+            {
+                if (result.Count > 1 && node.link != null)
+                {
+                    var last = result.Last();
+                    if (
+                        Math.Sign(node.x - last.x) != Math.Sign(node.link.x - node.x) ||
+                        Math.Sign(node.y - last.y) != Math.Sign(node.link.y - node.y)
+                    )
+                    {
+                        result.Add(new Vector2Int(node.x, node.y));
+                    }
+                }
+                else
+                {
+                    result.Add(new Vector2Int(node.x, node.y));
+                }
+
+                node = node.link;
+            }
+
+            return result;
         }
     }
 }

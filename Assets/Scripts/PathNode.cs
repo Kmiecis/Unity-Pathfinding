@@ -5,23 +5,22 @@ namespace Custom.Pathfinding
     [Serializable]
     public class PathNode
     {
-        public int x;
-        public int y;
+        public readonly int x;
+        public readonly int y;
 
-        public int traverseCost;
-        public int cumulativeCost; // G cost
-        public int distanceCost; // H cost
-        public int totalCost; // F cost
+        /// <summary> Cumulative score </summary>
+        public int gScore = int.MaxValue;
+        /// <summary> Distance score </summary>
+        public int hScore;
+        /// <summary> Total score </summary>
+        public int fScore;
 
-        public PathNode prev = null;
+        public PathNode link = null;
 
-        public PathNode(int x, int y, int traverseCost)
+        public PathNode(int x, int y)
         {
             this.x = x;
             this.y = y;
-            this.traverseCost = traverseCost;
-
-            this.cumulativeCost = int.MaxValue;
         }
     }
 }

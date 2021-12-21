@@ -8,8 +8,8 @@ namespace Custom.CaveGeneration
 {
     public static class CaveGenerator
     {
-        public const bool ROOM = false;
-        public const bool WALL = true;
+        public const bool ROOM = true;
+        public const bool WALL = false;
 
         private struct Line
         {
@@ -24,8 +24,8 @@ namespace Custom.CaveGeneration
             public int width;
             public int height;
             public int smooths;
-            public string seed;
             [Range(0.45f, 0.55f)] public float fill;
+            public string seed;
 
             [Header("Map processing")]
             public int wallThreshold;
@@ -38,8 +38,8 @@ namespace Custom.CaveGeneration
                 width = 64,
                 height = 64,
                 smooths = 4,
-                seed = "",
                 fill = 0.5f,
+                seed = "",
                 wallThreshold = 5,
                 roomThreshold = 5,
                 passageWidth = 2,
@@ -47,26 +47,23 @@ namespace Custom.CaveGeneration
             };
         }
 
-        public static bool[,] Generate(in Input input)
+        public static void Generate(bool[,] map, in Input input)
         {
-            var map = new bool[input.width, input.height];
-            Noisex.FillRandomMap(map, input.fill, input.seed.GetHashCode());
+            Noisex.GetRandomMap(map, input.fill, input.seed.GetHashCode());
             ApplyBorder(map, input.borderWidth);
             Noisex.SmoothRandomMap(map, input.smooths);
-
-            var wallRegions = GetRegionsByType(map, WALL);
-            var removedWallRegions = RemoveRegionsUnderThreshold(wallRegions, input.wallThreshold);
-            FlipRegions(removedWallRegions, map);
 
             var roomRegions = GetRegionsByType(map, ROOM);
             var removedRoomRegions = RemoveRegionsUnderThreshold(roomRegions, input.roomThreshold);
             FlipRegions(removedRoomRegions, map);
 
+            var wallRegions = GetRegionsByType(map, WALL);
+            var removedWallRegions = RemoveRegionsUnderThreshold(wallRegions, input.wallThreshold);
+            FlipRegions(removedWallRegions, map);
+
             var rooms = CreateRooms(roomRegions, map);
             var passages = FindPassages(rooms);
             ClearPassages(passages, map, input.passageWidth, input.borderWidth);
-
-            return map;
         }
 
         private static void ApplyBorder(bool[,] map, int border)
@@ -217,20 +214,21 @@ namespace Custom.CaveGeneration
             return result;
         }
 
+        // TODO: Bottleneck. Find a more optimal.
         private static List<Line> FindPassages(List<List<Vector2Int>> rooms)
         {
             var result = new List<Line>();
 
             if (rooms.Count < 1)
                 return result;
-
+            
             var roomA = rooms[0];
 
             while (rooms.Count > 1)
             {
                 var line = new Line();
                 var distance = int.MaxValue;
-                var index = -1;
+                var index = 0;
 
                 for (int i = 1; i < rooms.Count; ++i)
                 {
