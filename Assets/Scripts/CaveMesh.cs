@@ -61,9 +61,9 @@ namespace Custom.CaveGeneration
             }
         }
 
-        private IMeshBuilder Generate(bool[,] map)
+        private MeshBuilder Generate(bool[,] map)
         {
-            var builder = new FlatMeshBuilder();
+            var builder = new FlatMeshBuilder() { Options = EMeshBuildingOptions.NONE };
 
             var width = map.GetWidth();
             var height = map.GetHeight();
