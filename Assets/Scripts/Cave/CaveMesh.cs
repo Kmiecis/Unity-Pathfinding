@@ -1,5 +1,6 @@
 ﻿using Common;
 using Common.Extensions;
+using Common.Mathematics;
 using UnityEngine;
 
 namespace Custom.CaveGeneration
@@ -11,12 +12,12 @@ namespace Custom.CaveGeneration
         protected MeshFilter _filter;
         [Header("Input")]
         [SerializeField]
-        protected float wallHeight = 1.0f;
+        protected float _wallHeight = 1.0f;
 
-        private bool[,] _map;
+        private bool[][] _map;
         private Mesh _mesh;
 
-        public bool[,] Map
+        public bool[][] Map
         {
             set
             {
@@ -26,7 +27,7 @@ namespace Custom.CaveGeneration
             }
         }
 
-        private void CheckMesh(bool[,] map)
+        private void CheckMesh(bool[][] map)
         {
             if (map == null)
             {
@@ -51,17 +52,17 @@ namespace Custom.CaveGeneration
                 _filter.sharedMesh = mesh;
             }
         }
-
-        private void RegenerateMesh(bool[,] map)
+        
+        private void RegenerateMesh(bool[][] map)
         {
-            if (map != null)
+            if (map != null && _mesh != null)
             {
-                var builder = Generate(map);
+                var builder = GenerateMeshBuilder(map, _wallHeight);
                 builder.Overwrite(_mesh);
             }
         }
 
-        private MeshBuilder Generate(bool[,] map)
+        private static MeshBuilder GenerateMeshBuilder(bool[][] map, float wallHeight)
         {
             var builder = new FlatMeshBuilder() { Options = EMeshBuildingOptions.NONE };
 
@@ -70,16 +71,16 @@ namespace Custom.CaveGeneration
 
             var wallOffset = new Vector3(0.0f, 0.0f, wallHeight);
 
-            var vertices = MarchingSquares.Vertices();
+            var vertices = MarchingSquares.Vertices;
 
             for (int y = 0; y < height - 1; y++)
             {
                 for (int x = 0; x < width - 1; x++)
                 {
-                    var active0 = !map[x, y];
-                    var active1 = !map[x, y + 1];
-                    var active2 = !map[x + 1, y + 1];
-                    var active3 = !map[x + 1, y];
+                    var active0 = !map[x][y];
+                    var active1 = !map[x][y + 1];
+                    var active2 = !map[x + 1][y + 1];
+                    var active3 = !map[x + 1][y];
 
                     var configuration = MarchingSquares.GetConfiguration(active0, active1, active2, active3);
                     var triangles = MarchingSquares.Triangles[configuration];
@@ -87,7 +88,7 @@ namespace Custom.CaveGeneration
                     var offset = new Vector3(x, y) - wallOffset;
 
                     int i = 0;
-                    for (; i < triangles.Length && triangles[i] != -1; i += 3)
+                    for (; i < triangles.Length; i += 3)
                     {
                         var t0 = triangles[i + 0];
                         var t1 = triangles[i + 1];
@@ -118,7 +119,7 @@ namespace Custom.CaveGeneration
 
             return builder;
         }
-
+        
         private void OnDestroy()
         {
             _mesh?.Destroy();

@@ -10,10 +10,10 @@ namespace Custom.CaveGeneration
         [SerializeField]
         protected MeshRenderer _renderer;
 
-        private bool[,] _map;
+        private bool[][] _map;
         private Texture2D _texture;
 
-        public bool[,] Map
+        public bool[][] Map
         {
             set
             {
@@ -23,7 +23,7 @@ namespace Custom.CaveGeneration
             }
         }
 
-        private void CheckTexture(bool[,] map)
+        private void CheckTexture(bool[][] map)
         {
             if (map == null)
             {
@@ -67,16 +67,16 @@ namespace Custom.CaveGeneration
             }
         }
 
-        private void RegenerateTexture(bool[,] map)
+        private void RegenerateTexture(bool[][] map)
         {
-            if (map != null)
+            if (map != null && _texture != null)
             {
                 var builder = Generate(map);
                 builder.Overwrite(_texture);
             }
         }
 
-        private ITexture2DBuilder Generate(bool[,] map)
+        private static Texture2DBuilder Generate(bool[][] map)
         {
             int width = map.GetWidth();
             int height = map.GetHeight();
@@ -87,7 +87,7 @@ namespace Custom.CaveGeneration
             {
                 for (int x = 0; x < width; ++x)
                 {
-                    builder[x, y] = map[x, y] ? Color.white : Color.black;
+                    builder[x, y] = map[x][y] ? Color.white : Color.black;
                 }
             }
 

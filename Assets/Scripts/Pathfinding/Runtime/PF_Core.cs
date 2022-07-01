@@ -1,12 +1,12 @@
-﻿using Common;
-using Common.Extensions;
+﻿using Common.Extensions;
+using Common.Mathematics;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Custom.Pathfinding
 {
-    public static class PathGenerator
+    public static class PF_Core
     {
         private static readonly Vector2Int[] _directions = new Vector2Int[]
         {
@@ -20,39 +20,43 @@ namespace Custom.Pathfinding
             new Vector2Int(+1, -1)
         };
 
-        public static bool TryFindPath(bool[,] map, int startX, int startY, int targetX, int targetY, out PathNode node)
+        public static bool TryFindPath(bool[,] map, int startX, int startY, int targetX, int targetY, out List<Vector2Int> path)
         {
-            node = default;
+            path = default;
 
             if (!map[startX, startY] || !map[targetX, targetY])
                 return false;
 
             var width = map.GetWidth();
             var height = map.GetHeight();
-
-            var grid = new PathNode[width, height];
+            
+            var grid = new PF_Node[width * height];
             var gridRange = new Range2Int(0, 0, width - 1, height - 1);
 
-            var startNode = grid[startX, startY] = new PathNode(startX, startY) { gScore = 0 };
-            var targetNode = grid[targetX, targetY] = node = new PathNode(targetX, targetY);
+            var startNodeIndex = startX + startY * width;
+            var startNode = grid[startNodeIndex] = new PF_Node(startX, startY) { gScore = 0 };
+
+            var targetNodeIndex = targetX + targetY * width;
+            var targetNode = grid[targetNodeIndex] = new PF_Node(targetX, targetY);
 
             const byte NODE_ADDED = 1;
             const byte NODE_CHECKED = 2;
-            var checkedArray = new byte[width, height];
+            var checkedArray = new byte[width * height];
 
-            var remaining = new List<PathNode>() { startNode };
+            var remaining = new List<PF_Node>() { startNode };
             while (remaining.Count > 0)
             {
-                var currentNodeIndex = GetLowestTotalCostNodeIndex(remaining);
-                var currentNode = remaining[currentNodeIndex];
+                var currentIndex = GetLowestTotalCostNodeIndex(remaining);
+                var currentNode = remaining[currentIndex];
 
                 if (currentNode == targetNode)
                     break;
 
-                remaining.SwapLast(currentNodeIndex);
+                remaining.SwapLast(currentIndex);
                 remaining.RemoveLast();
 
-                checkedArray[currentNode.x, currentNode.y] = NODE_CHECKED;
+                var currentNodeIndex = currentNode.x + currentNode.y * width;
+                checkedArray[currentNodeIndex] = NODE_CHECKED;
 
                 for (int i = 0; i < _directions.Length; i++)
                 {
@@ -64,15 +68,16 @@ namespace Custom.Pathfinding
                     if (!gridRange.Contains(neighbourX, neighbourY))
                         continue;
 
-                    if (checkedArray[neighbourX, neighbourY] == NODE_CHECKED)
-                        continue;
-
                     if (!map[neighbourX, neighbourY])
                         continue;
 
-                    var neighbourNode = grid[neighbourX, neighbourY];
+                    var neighbourNodeIndex = neighbourX + neighbourY * width;
+                    if (checkedArray[neighbourNodeIndex] == NODE_CHECKED)
+                        continue;
+
+                    var neighbourNode = grid[neighbourNodeIndex];
                     if (neighbourNode == null)
-                        neighbourNode = grid[neighbourX, neighbourY] = new PathNode(neighbourX, neighbourY);
+                        neighbourNode = grid[neighbourNodeIndex] = new PF_Node(neighbourX, neighbourY);
 
                     var totalCumulativeCost = currentNode.gScore + GetDistanceCost(currentNode, neighbourNode);
                     if (totalCumulativeCost < neighbourNode.gScore)
@@ -81,19 +86,20 @@ namespace Custom.Pathfinding
                         neighbourNode.gScore = totalCumulativeCost;
                         neighbourNode.fScore = totalCumulativeCost + GetDistanceCost(neighbourNode, targetNode);
 
-                        if (checkedArray[neighbourX, neighbourY] < NODE_ADDED)
+                        if (checkedArray[neighbourNodeIndex] < NODE_ADDED)
                         {
                             remaining.Add(neighbourNode);
-                            checkedArray[neighbourX, neighbourY] = NODE_ADDED;
+                            checkedArray[neighbourNodeIndex] = NODE_ADDED;
                         }
                     }
                 }
             }
 
-            return node.link != null;
+            path = GetPathFromNode(targetNode);
+            return path.Count > 1;
         }
 
-        private static int GetLowestTotalCostNodeIndex(List<PathNode> nodes)
+        private static int GetLowestTotalCostNodeIndex(List<PF_Node> nodes)
         {   // Switching this with priority queue could reduce running time but add complexity. To consider.
             var result = 0;
             var nodeA = nodes[result];
@@ -112,7 +118,7 @@ namespace Custom.Pathfinding
             return result;
         }
 
-        private static int GetDistanceCost(PathNode a, PathNode b)
+        private static int GetDistanceCost(PF_Node a, PF_Node b)
         {
             int dx = Math.Abs(b.x - a.x);
             int dy = Math.Abs(b.y - a.y);
@@ -121,41 +127,32 @@ namespace Custom.Pathfinding
             return 14 * dx + 10 * (dy - dx);
         }
 
-        public static List<Vector2Int> ToPath(PathNode node)
+        private static List<Vector2Int> GetPathFromNode(PF_Node node)
         {
             var result = new List<Vector2Int>();
+
             while (node != null)
             {
                 result.Add(new Vector2Int(node.x, node.y));
                 node = node.link;
             }
-            return result;
-        }
 
-        public static List<Vector2Int> ToLeanPath(PathNode node)
-        {
-            var result = new List<Vector2Int>();
-
-            while (node != null)
+            for (int i = result.Count - 2; i > 0; --i)
             {
-                if (result.Count > 1 && node.link != null)
-                {
-                    var last = result.Last();
-                    if (
-                        Math.Sign(node.x - last.x) != Math.Sign(node.link.x - node.x) ||
-                        Math.Sign(node.y - last.y) != Math.Sign(node.link.y - node.y)
-                    )
-                    {
-                        result.Add(new Vector2Int(node.x, node.y));
-                    }
-                }
-                else
-                {
-                    result.Add(new Vector2Int(node.x, node.y));
-                }
+                var current = result[i];
+                var next = result[i - 1];
+                var prev = result[i + 1];
 
-                node = node.link;
+                if (
+                    Math.Sign(next.x - current.x) == Math.Sign(current.x - prev.x) &&
+                    Math.Sign(next.y - current.y) == Math.Sign(current.y - prev.y)
+                )
+                {
+                    result.RemoveAt(i);
+                }
             }
+
+            result.Reverse();
 
             return result;
         }

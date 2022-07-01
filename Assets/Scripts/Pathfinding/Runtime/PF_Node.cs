@@ -3,7 +3,7 @@
 namespace Custom.Pathfinding
 {
     [Serializable]
-    public class PathNode
+    public class PF_Node
     {
         public readonly int x;
         public readonly int y;
@@ -15,9 +15,9 @@ namespace Custom.Pathfinding
         /// <summary> Total score </summary>
         public int fScore;
 
-        public PathNode link = null;
+        public PF_Node link = null;
 
-        public PathNode(int x, int y)
+        public PF_Node(int x, int y)
         {
             this.x = x;
             this.y = y;
