@@ -129,30 +129,30 @@ namespace Custom.Pathfinding
 
         private static List<Vector2Int> GetPathFromNode(PF_Node node)
         {
-            var result = new List<Vector2Int>();
-
+            var nodes = new List<Vector2Int>();
             while (node != null)
             {
-                result.Add(new Vector2Int(node.x, node.y));
+                nodes.Add(new Vector2Int(node.x, node.y));
                 node = node.link;
             }
 
-            for (int i = result.Count - 2; i > 0; --i)
+            var result = new List<Vector2Int>();
+            result.Add(nodes.Last());
+            for (int i = nodes.Count - 2; i > 0; --i)
             {
-                var current = result[i];
-                var next = result[i - 1];
-                var prev = result[i + 1];
+                var prev = nodes[i + 1];
+                var current = nodes[i];
+                var next = nodes[i - 1];
 
                 if (
-                    Math.Sign(next.x - current.x) == Math.Sign(current.x - prev.x) &&
-                    Math.Sign(next.y - current.y) == Math.Sign(current.y - prev.y)
+                    next.x - current.x != current.x - prev.x ||
+                    next.y - current.y != current.y - prev.y
                 )
                 {
-                    result.RemoveAt(i);
+                    result.Add(current);
                 }
             }
-
-            result.Reverse();
+            result.Add(nodes.First());
 
             return result;
         }
