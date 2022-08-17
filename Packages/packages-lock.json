@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "com.common.assemblies": {
+      "version": "https://github.com/kmiecis/unity-package-common.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "c82cbc82c90906b7358816e86f844f07ab2ecb65"
+    },
     "com.unity.ext.nunit": {
       "version": "1.0.6",
       "depth": 2,
