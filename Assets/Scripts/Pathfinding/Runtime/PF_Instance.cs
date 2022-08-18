@@ -21,15 +21,20 @@ namespace Custom.Pathfinding
         public float unit = 1.0f;
         public Vector2 size;
 
-        private TransformWatcher _transformWatcher;
-        private bool[,] _grid;
         private static readonly List<PF_Instance> _instances = new();
 
+        private TransformWatcher _transformWatcher;
+        private bool[,] _grid;
+
         public bool[,] Grid
-            => _grid;
+        {
+            get => _grid;
+        }
 
         public static List<PF_Instance> Instances
-            => _instances;
+        {
+            get => _instances;
+        }
 
         private Vector2 GridPosition
         {

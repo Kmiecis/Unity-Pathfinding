@@ -8,7 +8,7 @@ namespace Custom.Pathfinding
 {
     public static class PF_Core
     {
-        private static readonly Vector2Int[] _directions = new Vector2Int[]
+        private static readonly Vector2Int[] kDirections = new Vector2Int[]
         {
             new Vector2Int(-1, +0),
             new Vector2Int(+0, +1),
@@ -20,11 +20,11 @@ namespace Custom.Pathfinding
             new Vector2Int(+1, -1)
         };
 
-        public static bool TryFindPath(bool[,] map, int startX, int startY, int targetX, int targetY, out List<Vector2Int> path)
+        public static bool TryFindPath(bool[,] map, Vector2Int start, Vector2Int target, out List<Vector2Int> path)
         {
             path = default;
 
-            if (!map[startX, startY] || !map[targetX, targetY])
+            if (!map[start.x, start.y] || !map[target.x, target.y])
                 return false;
 
             var width = map.GetWidth();
@@ -33,11 +33,11 @@ namespace Custom.Pathfinding
             var grid = new PF_Node[width * height];
             var gridRange = new Range2Int(0, 0, width - 1, height - 1);
 
-            var startNodeIndex = startX + startY * width;
-            var startNode = grid[startNodeIndex] = new PF_Node(startX, startY) { gScore = 0 };
+            var startNodeIndex = start.x + start.y * width;
+            var startNode = grid[startNodeIndex] = new PF_Node(start.x, start.y) { gScore = 0 };
 
-            var targetNodeIndex = targetX + targetY * width;
-            var targetNode = grid[targetNodeIndex] = new PF_Node(targetX, targetY);
+            var targetNodeIndex = target.x + target.y * width;
+            var targetNode = grid[targetNodeIndex] = new PF_Node(target.x, target.y);
 
             const byte NODE_ADDED = 1;
             const byte NODE_CHECKED = 2;
@@ -49,7 +49,7 @@ namespace Custom.Pathfinding
                 var currentIndex = GetLowestTotalCostNodeIndex(remaining);
                 var currentNode = remaining[currentIndex];
 
-                if (currentNode == targetNode)
+                if (currentIndex == targetNodeIndex)
                     break;
 
                 remaining.SwapLast(currentIndex);
@@ -58,9 +58,9 @@ namespace Custom.Pathfinding
                 var currentNodeIndex = currentNode.x + currentNode.y * width;
                 checkedArray[currentNodeIndex] = NODE_CHECKED;
 
-                for (int i = 0; i < _directions.Length; i++)
+                for (int i = 0; i < kDirections.Length; i++)
                 {
-                    var direction = _directions[i];
+                    var direction = kDirections[i];
 
                     var neighbourX = currentNode.x + direction.x;
                     var neighbourY = currentNode.y + direction.y;

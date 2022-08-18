@@ -1,6 +1,4 @@
 ﻿using Common;
-using Common.Extensions;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,36 +8,38 @@ namespace Custom.Pathfinding
     {
         public float speed = 1.0f;
 
-        private List<Vector2> _path;
+        private List<Vector3> _path;
         private int _node = 0;
 
-        private Coroutine _followPathRoutine;
+        private bool _follow;
 
         public bool HasPath
-            => _path != null;
+        {
+            get => _path != null;
+        }
 
-        public void Move(Vector2 p)
+        public void Move(Vector3 position)
         {
             Halt();
 
             foreach (var instance in PF_Instance.Instances)
             {
-                var startPosition = instance.ToGridPosition(transform.position);
-                var targetPosition = instance.ToGridPosition(p);
+                var startGridPosition = instance.ToGridPosition(transform.position);
+                var targetGridPosition = instance.ToGridPosition(position);
                 if (
-                    instance.Contains(startPosition) &&
-                    instance.Contains(targetPosition)
+                    instance.Contains(startGridPosition) &&
+                    instance.Contains(targetGridPosition)
                 )
                 {
                     var grid = instance.Grid;
 
-                    if (PF_Core.TryFindPath(grid, startPosition.x, startPosition.y, targetPosition.x, targetPosition.y, out var path))
+                    if (PF_Core.TryFindPath(grid, startGridPosition, targetGridPosition, out var path))
                     {
-                        _path = new List<Vector2>(path.Count);
+                        _path = new List<Vector3>(path.Count);
                         foreach (var gridPosition in path)
                         {
-                            var position = instance.FromGridPosition(gridPosition);
-                            _path.Add(position);
+                            var pathPosition = instance.FromGridPosition(gridPosition);
+                            _path.Add(pathPosition);
                         }
 
                         Resume();
@@ -51,47 +51,56 @@ namespace Custom.Pathfinding
 
         public void Resume()
         {
-            _followPathRoutine = StartCoroutine(FollowPathCoroutine());
+            _follow = true;
         }
 
         public void Halt()
         {
-            if (_followPathRoutine != null)
-            {
-                StopCoroutine(_followPathRoutine);
-                _followPathRoutine = null;
-            }
+            _follow = false;
         }
 
-        private IEnumerator FollowPathCoroutine()
+        private void FollowPath(float deltaTime)
         {
-            while (_path != null)
+            var currentPosition = transform.position;
+
+            var movement = speed * deltaTime;
+            while (movement > 0.0f && _path != null)
             {
-                var fromPosition = (Vector2)transform.position;
-                var toPosition = _path[_node];
+                var targetPosition = _path[_node];
 
-                var t = 0.0f;
-                var f = 1.0f / (toPosition - fromPosition).magnitude;
-                while (t < 1.0f)
+                var direction = targetPosition - currentPosition;
+                var distance = direction.magnitude;
+                direction.Normalize();
+
+                if (distance > movement)
                 {
-                    var newPosition = Vector2.Lerp(fromPosition, toPosition, t);
-                    transform.position = newPosition;
-
-                    t += f * speed * Time.deltaTime;
-
-                    yield return null;
+                    currentPosition += movement * direction;
+                    movement = 0.0f;
                 }
-
-                transform.position = toPosition;
-                _node++;
-
-                if (_node >= _path.Count)
+                else
                 {
-                    _path = null;
-                    _node = 0;
-                }
+                    currentPosition += distance * direction;
+                    movement -= distance;
 
-                yield return null;
+                    _node++;
+                    if (_node == _path.Count)
+                    {
+                        _path = null;
+                        _node = 0;
+                    }
+                }
+            }
+
+            transform.position = currentPosition;
+        }
+
+        private void FixedUpdate()
+        {
+            var deltaTime = Time.fixedDeltaTime;
+
+            if (_follow && _path != null)
+            {
+                FollowPath(deltaTime);
             }
         }
 
@@ -106,7 +115,7 @@ namespace Custom.Pathfinding
                 var positions = new Vector3[_path.Count];
                 for (int i = 0; i < _path.Count; ++i)
                 {
-                    positions[i] = _path[i].XY_() + Vector3.back;
+                    positions[i] = _path[i] + Vector3.back;
                 }
 
                 Gizmos.color = Color.green;
