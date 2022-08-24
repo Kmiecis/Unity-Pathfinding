@@ -71,43 +71,40 @@ namespace Custom.CaveGeneration
 
             var wallOffset = new Vector3(0.0f, 0.0f, wallHeight);
 
-            var vertices = MarchingSquares.Vertices;
+            var vs = MarchingSquares.Vertices;
 
             for (int y = 0; y < height - 1; y++)
             {
                 for (int x = 0; x < width - 1; x++)
                 {
-                    var active0 = !map[x][y];
-                    var active1 = !map[x][y + 1];
-                    var active2 = !map[x + 1][y + 1];
-                    var active3 = !map[x + 1][y];
+                    var v = new Vector3(x, y);
 
-                    var configuration = MarchingSquares.GetConfiguration(active0, active1, active2, active3);
-                    var triangles = MarchingSquares.Triangles[configuration];
-
-                    var offset = new Vector3(x, y) - wallOffset;
+                    var c = MarchingSquares.GetConfiguration(
+                        !map[x][y], !map[x][y + 1], !map[x + 1][y + 1], !map[x + 1][y]
+                    );
 
                     int i = 0;
-                    for (; i < triangles.Length; i += 3)
+                    var ts = MarchingSquares.Triangles[c];
+                    for (; i < ts.Length; i += 3)
                     {
-                        var t0 = triangles[i + 0];
-                        var t1 = triangles[i + 1];
-                        var t2 = triangles[i + 2];
+                        var t0 = ts[i + 0];
+                        var t1 = ts[i + 1];
+                        var t2 = ts[i + 2];
 
-                        var v0 = (Vector3)vertices[t0] + offset;
-                        var v1 = (Vector3)vertices[t1] + offset;
-                        var v2 = (Vector3)vertices[t2] + offset;
+                        var v0 = (Vector3)vs[t0] + v - wallOffset;
+                        var v1 = (Vector3)vs[t1] + v - wallOffset;
+                        var v2 = (Vector3)vs[t2] + v - wallOffset;
 
                         builder.AddTriangle(v0, v1, v2);
                     }
 
-                    if (configuration > 0 && configuration < MarchingSquares.Triangles.Length - 1)
+                    if (c > 0 && c < MarchingSquares.Triangles.Length - 1)
                     {
-                        var wt0 = triangles[i - 1];
-                        var wt1 = triangles[i - 2];
+                        var wt0 = ts[i - 1];
+                        var wt1 = ts[i - 2];
 
-                        var wv0 = (Vector3)vertices[wt0] + offset;
-                        var wv1 = (Vector3)vertices[wt1] + offset;
+                        var wv0 = (Vector3)vs[wt0] + v - wallOffset;
+                        var wv1 = (Vector3)vs[wt1] + v - wallOffset;
                         var wv2 = wv1 + wallOffset;
                         var wv3 = wv0 + wallOffset;
 

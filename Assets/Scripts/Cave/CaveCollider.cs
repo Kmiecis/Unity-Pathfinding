@@ -86,9 +86,6 @@ namespace Custom.CaveGeneration
             // Find edge pairs
             var vertices = MarchingSquares.Vertices;
 
-            var v0 = Vector2.zero;
-            var v1 = Vector2.zero;
-
             for (int y = 0; y < height - 1; ++y)
             {
                 for (int x = 0; x < width - 1; ++x)
@@ -113,8 +110,8 @@ namespace Custom.CaveGeneration
 
                                 if (t0 > 3 && t1 > 3) // 4 || 5 || 6 || 7
                                 {
-                                    v0 = vertices[t0] + offset;
-                                    v1 = vertices[t1] + offset;
+                                    var v0 = vertices[t0] + offset;
+                                    var v1 = vertices[t1] + offset;
 
                                     AddEdge(v0, v1);
                                     AddEdge(v1, v0);
@@ -128,8 +125,8 @@ namespace Custom.CaveGeneration
             while (edges.Count > 0)
             {
                 var firstKey = edges.First().Key;
-                v0 = KeyToVertex(firstKey);
-                v1 = GetNextVertex(v0, v0);
+                var v0 = KeyToVertex(firstKey);
+                var v1 = GetNextVertex(v0, v0);
 
                 var path = new List<Vector2>();
 

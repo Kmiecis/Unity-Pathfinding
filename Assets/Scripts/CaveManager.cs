@@ -9,8 +9,6 @@ namespace Custom
     public class CaveManager : MonoBehaviour
     {
         [SerializeField]
-        protected CaveTexture _caveTexture;
-        [SerializeField]
         protected CaveMesh _caveMesh;
         [SerializeField]
         protected CaveCollider _caveCollider;
@@ -43,47 +41,15 @@ namespace Custom
             BuildCaveMap();
             if (_caveMesh != null)
                 _caveMesh.Map = _caveMap;
-            if (_caveTexture != null)
-                _caveTexture.Map = _caveMap;
             if (_caveCollider != null)
                 _caveCollider.Map = _caveMap;
             PositionGround();
         }
 
-        /*private void SetUnitPath()
-        {
-            var startPosition = Vector2Int.RoundToInt(_unit.transform.position);
-
-            int caveWidth = _caveMap.GetWidth();
-            int caveHeight = _caveMap.GetHeight();
-            int x, y;
-            do
-            {
-                x = Random.Range(0, caveWidth);
-                y = Random.Range(0, caveHeight);
-            }
-            while (!_caveMap[x][y]);
-
-            if (PF_Core.TryFindPath(_caveMap, startPosition.x, startPosition.y, x, y, out var node))
-            {
-                var path = PF_Core.ToPath(node);
-                _unit.SetPath(path, Vector2.one);
-                _unit.StartFollowPath();
-            }
-        }*/
-
         private void Start()
         {
             Build();
         }
-
-        /*private void Update()
-        {
-            if (_unit != null && _unit.HasReachedDestination)
-            {
-                SetUnitPath();
-            }
-        }*/
 
 #if UNITY_EDITOR
         [Header("Gizmos")]

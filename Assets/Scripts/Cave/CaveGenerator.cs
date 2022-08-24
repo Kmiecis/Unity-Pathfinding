@@ -10,8 +10,8 @@ namespace Custom.CaveGeneration
 {
     public static class CaveGenerator
     {
-        public const bool ROOM = true;
-        public const bool WALL = false;
+        private const bool kRoom = true;
+        private const bool kWall = false;
 
         private struct Line
         {
@@ -26,12 +26,13 @@ namespace Custom.CaveGeneration
             public int width;
             public int height;
             public int smooths;
-            [Range(0.45f, 0.55f)] public float fill;
+            [Range(0.45f, 0.55f)]
+            public float fill;
             public string seed;
 
             [Header("Map processing")]
-            public int wallThreshold;
-            public int roomThreshold;
+            public int wallSizeThreshold;
+            public int roomSizeThreshold;
             public int passageWidth;
             public int borderWidth;
 
@@ -42,8 +43,8 @@ namespace Custom.CaveGeneration
                 smooths = 4,
                 fill = 0.5f,
                 seed = "",
-                wallThreshold = 5,
-                roomThreshold = 5,
+                wallSizeThreshold = 5,
+                roomSizeThreshold = 5,
                 passageWidth = 2,
                 borderWidth = 2
             };
@@ -51,16 +52,17 @@ namespace Custom.CaveGeneration
 
         public static void Generate(bool[][] map, in Input input)
         {
-            Noisex.GetRandomMap(map, input.fill, input.seed.GetHashCode());
+            var random = new System.Random(input.seed.GetHashCode());
+            Noisex.GetRandomMap(map, input.fill, random);
             ApplyBorder(map, input.borderWidth);
             Noisex.SmoothRandomMap(map, input.smooths);
 
-            var roomRegions = GetRegionsByType(map, ROOM);
-            var removedRoomRegions = RemoveRegionsUnderThreshold(roomRegions, input.roomThreshold);
+            var roomRegions = GetRegionsByType(map, kRoom);
+            var removedRoomRegions = RemoveRegionsUnderThreshold(roomRegions, input.roomSizeThreshold);
             FlipRegions(removedRoomRegions, map);
 
-            var wallRegions = GetRegionsByType(map, WALL);
-            var removedWallRegions = RemoveRegionsUnderThreshold(wallRegions, input.wallThreshold);
+            var wallRegions = GetRegionsByType(map, kWall);
+            var removedWallRegions = RemoveRegionsUnderThreshold(wallRegions, input.wallSizeThreshold);
             FlipRegions(removedWallRegions, map);
 
             var rooms = CreateRooms(roomRegions, map);
@@ -77,12 +79,12 @@ namespace Custom.CaveGeneration
             {
                 for (int x = 0; x < border; x++)
                 {
-                    map[x][y] = WALL;
+                    map[x][y] = kWall;
                 }
 
-                for (int x = width - border - 1; x < width; x++)
+                for (int x = width - border; x < width; x++)
                 {
-                    map[x][y] = WALL;
+                    map[x][y] = kWall;
                 }
             }
 
@@ -90,12 +92,12 @@ namespace Custom.CaveGeneration
             {
                 for (int y = 0; y < border; y++)
                 {
-                    map[x][y] = WALL;
+                    map[x][y] = kWall;
                 }
 
-                for (int y = height - border - 1; y < height; y++)
+                for (int y = height - border; y < height; y++)
                 {
-                    map[x][y] = WALL;
+                    map[x][y] = kWall;
                 }
             }
         }
@@ -110,9 +112,9 @@ namespace Custom.CaveGeneration
             var isChecked = Arrays.New<bool>(width, height);
             var mapRange = new Range2Int(0, 0, width - 1, height - 1);
 
-            for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
             {
-                for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
                 {
                     if (
                         !isChecked[x][y] &&
@@ -205,7 +207,7 @@ namespace Custom.CaveGeneration
                         if (
                             mapRange.Contains(neighbour) &&
                             !isChecked[neighbour.x, neighbour.y] &&
-                            map[neighbour.x][neighbour.y] == WALL
+                            map[neighbour.x][neighbour.y] == kWall
                         )
                         {
                             room.Add(neighbour);
@@ -220,7 +222,7 @@ namespace Custom.CaveGeneration
             return result;
         }
 
-        // TODO: Bottleneck. Find a more optimal.
+        // TODO: Bottleneck. Find a more optimal way.
         private static List<Line> FindPassages(List<List<Vector2Int>> rooms)
         {
             var result = new List<Line>();
@@ -347,9 +349,9 @@ namespace Custom.CaveGeneration
             var height = map.GetHeight();
             var mapRange = new Range2Int(borderWidth, borderWidth, width - borderWidth - 1, height - borderWidth - 1);
 
-            for (int y = -r; y <= r; y++)
+            for (int x = -r; x <= r; x++)
             {
-                for (int x = -r; x <= r; x++)
+                for (int y = -r; y <= r; y++)
                 {
                     if (x * x + y * y <= r * r)
                     {
@@ -357,7 +359,7 @@ namespace Custom.CaveGeneration
 
                         if (mapRange.Contains(clearTile))
                         {
-                            map[clearTile.x][clearTile.y] = ROOM;
+                            map[clearTile.x][clearTile.y] = kRoom;
                         }
                     }
                 }
