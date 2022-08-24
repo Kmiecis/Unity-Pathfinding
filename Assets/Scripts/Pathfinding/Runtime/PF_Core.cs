@@ -8,6 +8,14 @@ namespace Custom.Pathfinding
 {
     public static class PF_Core
     {
+        [Flags]
+        private enum ENodeState : byte
+        {
+            Idle = 0,
+            Added = 1,
+            Checked = 2
+        }
+
         private static readonly Vector2Int[] kDirections = new Vector2Int[]
         {
             new Vector2Int(-1, +0),
@@ -39,9 +47,7 @@ namespace Custom.Pathfinding
             var targetNodeIndex = target.x + target.y * width;
             var targetNode = grid[targetNodeIndex] = new PF_Node(target.x, target.y);
 
-            const byte NODE_ADDED = 1;
-            const byte NODE_CHECKED = 2;
-            var checkedArray = new byte[width * height];
+            var checkedArray = new ENodeState[width * height];
 
             var remaining = new List<PF_Node>() { startNode };
             while (remaining.Count > 0)
@@ -56,7 +62,7 @@ namespace Custom.Pathfinding
                 remaining.RemoveLast();
 
                 var currentNodeIndex = currentNode.x + currentNode.y * width;
-                checkedArray[currentNodeIndex] = NODE_CHECKED;
+                checkedArray[currentNodeIndex] = ENodeState.Checked;
 
                 for (int i = 0; i < kDirections.Length; i++)
                 {
@@ -72,7 +78,7 @@ namespace Custom.Pathfinding
                         continue;
 
                     var neighbourNodeIndex = neighbourX + neighbourY * width;
-                    if (checkedArray[neighbourNodeIndex] == NODE_CHECKED)
+                    if (checkedArray[neighbourNodeIndex] == ENodeState.Checked)
                         continue;
 
                     var neighbourNode = grid[neighbourNodeIndex];
@@ -86,10 +92,10 @@ namespace Custom.Pathfinding
                         neighbourNode.gScore = totalCumulativeCost;
                         neighbourNode.fScore = totalCumulativeCost + GetDistanceCost(neighbourNode, targetNode);
 
-                        if (checkedArray[neighbourNodeIndex] < NODE_ADDED)
+                        if (checkedArray[neighbourNodeIndex] < ENodeState.Added)
                         {
                             remaining.Add(neighbourNode);
-                            checkedArray[neighbourNodeIndex] = NODE_ADDED;
+                            checkedArray[neighbourNodeIndex] = ENodeState.Added;
                         }
                     }
                 }
@@ -120,11 +126,17 @@ namespace Custom.Pathfinding
 
         private static int GetDistanceCost(PF_Node a, PF_Node b)
         {
+            const int H_MUL = 14;
+            const int L_MUL = 10;
+
             int dx = Math.Abs(b.x - a.x);
             int dy = Math.Abs(b.y - a.y);
+
             if (dx > dy)
-                return 14 * dy + 10 * (dx - dy);
-            return 14 * dx + 10 * (dy - dx);
+            {
+                return H_MUL * dy + L_MUL * (dx - dy);
+            }
+            return H_MUL * dx + L_MUL * (dy - dx);
         }
 
         private static List<Vector2Int> GetPathFromNode(PF_Node node)
@@ -137,22 +149,25 @@ namespace Custom.Pathfinding
             }
 
             var result = new List<Vector2Int>();
-            result.Add(nodes.Last());
-            for (int i = nodes.Count - 2; i > 0; --i)
+            if (nodes.First() != nodes.Last())
             {
-                var prev = nodes[i + 1];
-                var current = nodes[i];
-                var next = nodes[i - 1];
-
-                if (
-                    next.x - current.x != current.x - prev.x ||
-                    next.y - current.y != current.y - prev.y
-                )
+                result.Add(nodes.Last());
+                for (int i = nodes.Count - 2; i > 0; --i)
                 {
-                    result.Add(current);
+                    var prev = nodes[i + 1];
+                    var current = nodes[i];
+                    var next = nodes[i - 1];
+
+                    if (
+                        next.x - current.x != current.x - prev.x ||
+                        next.y - current.y != current.y - prev.y
+                    )
+                    {
+                        result.Add(current);
+                    }
                 }
+                result.Add(nodes.First());
             }
-            result.Add(nodes.First());
 
             return result;
         }
