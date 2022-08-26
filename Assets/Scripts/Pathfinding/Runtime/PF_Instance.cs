@@ -9,7 +9,7 @@ namespace Custom.Pathfinding
     [ExecuteInEditMode]
     public class PF_Instance : MonoBehaviour
     {
-        private static readonly Vector2[] kOffsets = new Vector2[]
+        private static readonly Vector2[] kCorners = new Vector2[]
         {
             new Vector2(-0.5f, -0.5f),
             new Vector2(-0.5f, +0.5f),
@@ -17,11 +17,10 @@ namespace Custom.Pathfinding
             new Vector2(+0.5f, -0.5f)
         };
 
-        [Min(0.1f)]
-        public float unit = 1.0f;
-        public Vector2 size;
+        public Vector2 unit = new Vector2(1.0f, 1.0f);
+        public Vector2 size = new Vector2(16.0f, 16.0f);
 
-        private static readonly List<PF_Instance> _instances = new();
+        private static readonly List<PF_Instance> _instances = new List<PF_Instance>();
 
         private TransformWatcher _transformWatcher;
         private bool[,] _grid;
@@ -36,24 +35,24 @@ namespace Custom.Pathfinding
             get => _instances;
         }
 
-        private Vector2 GridPosition
+        public Vector2 GridPosition
         {
-            get => (Vector2)transform.position - 0.5f * unit * Vector2.one;
+            get => (Vector2)transform.position - 0.5f * unit;
         }
 
-        private Vector2Int GridSize
+        public Vector2Int GridSize
         {
             get => Mathx.RoundToInt(size / unit);
         }
 
         public Vector2 FromGridPosition(Vector2Int p)
         {
-            return (Vector2)transform.position + Mathx.Mul(p, unit);
+            return (Vector2)transform.position + p * unit;
         }
         
         public Vector2Int ToGridPosition(Vector2 p)
         {
-            return Mathx.RoundToInt(Mathx.Div(p, unit) - (Vector2)transform.position);
+            return Mathx.FloorToInt(p / unit - (Vector2)transform.position);
         }
 
         public bool Contains(Vector2 p)
@@ -74,7 +73,11 @@ namespace Custom.Pathfinding
         public void Bake()
         {
             var gridSize = GridSize;
-            if (_grid == null || _grid.GetWidth() != gridSize.x || _grid.GetHeight() != gridSize.y)
+            if (
+                _grid == null ||
+                _grid.GetWidth() != gridSize.x ||
+                _grid.GetHeight() != gridSize.y
+            )
             {
                 _grid = new bool[gridSize.x, gridSize.y];
             }
@@ -93,9 +96,9 @@ namespace Custom.Pathfinding
                     {
                         var collider = colliders[c];
 
-                        for (int o = 0; o < kOffsets.Length && walkable; ++o)
+                        for (int o = 0; o < kCorners.Length && walkable; ++o)
                         {
-                            var offset = kOffsets[o];
+                            var offset = kCorners[o];
 
                             var position = FromGridPosition(gridNode) + offset * unit;
                             walkable = !collider.Contains(position);

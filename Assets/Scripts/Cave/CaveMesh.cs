@@ -98,7 +98,7 @@ namespace Custom.CaveGeneration
                         builder.AddTriangle(v0, v1, v2);
                     }
 
-                    if (c > 0 && c < MarchingSquares.Triangles.Length - 1)
+                    if (c > 0)
                     {
                         var wt0 = ts[i - 1];
                         var wt1 = ts[i - 2];
@@ -110,6 +110,21 @@ namespace Custom.CaveGeneration
 
                         builder.AddTriangle(wv0, wv1, wv2);
                         builder.AddTriangle(wv0, wv2, wv3);
+
+                        // Special cases of two walls
+                        if (c == 5 || c == 10)
+                        {
+                            wt0 = ts[1];
+                            wt1 = ts[2];
+
+                            wv0 = (Vector3)vs[wt0] + v - wallOffset;
+                            wv1 = (Vector3)vs[wt1] + v - wallOffset;
+                            wv2 = wv1 + wallOffset;
+                            wv3 = wv0 + wallOffset;
+
+                            builder.AddTriangle(wv2, wv1, wv0);
+                            builder.AddTriangle(wv2, wv0, wv3);
+                        }
                     }
                 }
             }

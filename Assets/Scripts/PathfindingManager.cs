@@ -13,21 +13,29 @@ namespace Custom
 
         private void SetAgentPath(PF_Agent agent)
         {
-            var instances = PF_Instance.Instances;
-            var instance = _random.NextItem(instances);
-            var grid = instance.Grid;
-            var gridWidth = grid.GetWidth();
-            var gridHeight = grid.GetHeight();
-            var gridPosition = Vector2Int.zero;
-            do
-            {
-                gridPosition.x = _random.Next(gridWidth);
-                gridPosition.y = _random.Next(gridHeight);
-            }
-            while (!grid[gridPosition.x, gridPosition.y]);
-            var position = instance.FromGridPosition(gridPosition);
+            var agentPosition = agent.transform.position;
 
-            agent.Move(position);
+            var instances = PF_Instance.Instances;
+            foreach (var instance in instances)
+            {
+                if (instance.Contains(agentPosition))
+                {
+                    var grid = instance.Grid;
+                    var gridWidth = grid.GetWidth();
+                    var gridHeight = grid.GetHeight();
+                    var position = Vector2.zero;
+                    do
+                    {
+                        position.x = _random.NextFloat(gridWidth);
+                        position.y = _random.NextFloat(gridHeight);
+                        position += instance.GridPosition;
+                    }
+                    while (!instance.Contains(position));
+
+                    agent.Move(position);
+                    break;
+                }
+            }
         }
 
         private void Update()

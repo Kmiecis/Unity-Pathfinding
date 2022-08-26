@@ -36,11 +36,13 @@ namespace Custom.Pathfinding
                     if (PF_Core.TryFindPath(grid, startGridPosition, targetGridPosition, out var path))
                     {
                         _path = new List<Vector3>(path.Count);
+                        _path.Add(transform.position);
                         foreach (var gridPosition in path)
                         {
                             var pathPosition = instance.FromGridPosition(gridPosition);
                             _path.Add(pathPosition);
                         }
+                        _path.Add(position);
 
                         Resume();
                         return;
