@@ -31,8 +31,17 @@ namespace Custom
             {
                 var width = (_caveMap.GetWidth() - 1);
                 var height = (_caveMap.GetHeight() - 1);
-                _ground.localPosition = new Vector3(width * 0.5f, height * 0.5f, 0.0f);
-                _ground.localScale = new Vector3(width, height, 1.0f);
+
+                var localPosition = _ground.localPosition;
+                var localScale = _ground.localScale;
+
+                localPosition.x = width * 0.5f;
+                localPosition.y = height * 0.5f;
+                localScale.x = width;
+                localScale.y = height;
+
+                _ground.localPosition = localPosition;
+                _ground.localScale = localScale;
             }
         }
 
