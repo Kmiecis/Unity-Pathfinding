@@ -18,37 +18,23 @@ namespace Custom.Pathfinding
             get => _path != null;
         }
 
-        public void Move(Vector3 position)
+        public bool TryMove(Vector3 position)
         {
             Halt();
 
-            foreach (var instance in PF_Instance.Instances)
+            foreach (var instance in PF_IInstance.Instances)
             {
-                var startGridPosition = instance.ToGridPosition(transform.position);
-                var targetGridPosition = instance.ToGridPosition(position);
-                if (
-                    instance.Contains(startGridPosition) &&
-                    instance.Contains(targetGridPosition)
-                )
+                var startPosition = transform.position;
+                var targetPosition = position;
+
+                if (instance.TryFindPath(startPosition, targetPosition, out _path))
                 {
-                    var grid = instance.Grid;
-
-                    if (PF_Core.TryFindPath(grid, startGridPosition, targetGridPosition, out var path))
-                    {
-                        _path = new List<Vector3>(path.Count);
-                        _path.Add(transform.position);
-                        foreach (var gridPosition in path)
-                        {
-                            var pathPosition = instance.FromGridPosition(gridPosition);
-                            _path.Add(pathPosition);
-                        }
-                        _path.Add(position);
-
-                        Resume();
-                        return;
-                    }
+                    Resume();
+                    return true;
                 }
             }
+
+            return false;
         }
 
         public void Resume()
@@ -117,7 +103,7 @@ namespace Custom.Pathfinding
                 var positions = new Vector3[_path.Count];
                 for (int i = 0; i < _path.Count; ++i)
                 {
-                    positions[i] = _path[i] + Vector3.back;
+                    positions[i] = _path[i];
                 }
 
                 Gizmos.color = Color.green;

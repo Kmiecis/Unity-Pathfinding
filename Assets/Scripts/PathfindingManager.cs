@@ -15,24 +15,30 @@ namespace Custom
         {
             var agentPosition = agent.transform.position;
 
-            var instances = PF_Instance.Instances;
+            var instances = PF_IInstance.Instances;
             foreach (var instance in instances)
             {
-                if (instance.Contains(agentPosition))
+                if (
+                    instance is PF_Instance instance2D &&
+                    instance2D.Contains(agentPosition)
+                )
                 {
-                    var grid = instance.Grid;
-                    var gridWidth = grid.GetWidth();
-                    var gridHeight = grid.GetHeight();
-                    var position = Vector2.zero;
-                    do
-                    {
-                        position.x = _random.NextFloat(gridWidth);
-                        position.y = _random.NextFloat(gridHeight);
-                        position += instance.GridPosition;
-                    }
-                    while (!instance.Contains(position));
+                    var min = instance2D.GridPosition;
+                    var max = min + instance2D.GridSize;
 
-                    agent.Move(position);
+                    var position = _random.NextVector2(min, max);
+
+                    agent.TryMove(position);
+                    break;
+                }
+                else if (instance is PF_Instance3D instance3D)
+                {
+                    var min = instance3D.GridPosition;
+                    var max = min + instance3D.GridSize;
+
+                    var position = _random.NextVector3(min, max);
+
+                    agent.TryMove(position);
                     break;
                 }
             }

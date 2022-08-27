@@ -16,23 +16,18 @@ namespace Custom.CaveGeneration
 
         public bool[][][] Map
         {
+            get => _map;
             set
             {
                 _map = value;
-                CheckMesh(_map);
+                CheckMesh(_map != null);
                 RegenerateMesh(_map, _mesh);
             }
         }
 
-        private void CheckMesh(bool[][][] map)
+        private void CheckMesh(bool exists)
         {
-            if (map == null)
-            {
-                _mesh?.Destroy();
-                _mesh = null;
-                ApplyMeshToFilter(null);
-            }
-            else
+            if (exists)
             {
                 if (_mesh == null)
                 {
@@ -40,13 +35,19 @@ namespace Custom.CaveGeneration
                     ApplyMeshToFilter(_mesh);
                 }
             }
+            else
+            {
+                _mesh?.Destroy();
+                _mesh = null;
+                ApplyMeshToFilter(null);
+            }
         }
 
         private void ApplyMeshToFilter(Mesh mesh)
         {
             if (_filter != null)
             {
-                _filter.sharedMesh = mesh;
+                _filter.sharedMesh = mesh; 
             }
         }
 

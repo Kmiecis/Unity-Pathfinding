@@ -9,6 +9,8 @@ namespace Custom.CaveGeneration
     {
         [SerializeField]
         protected CaveMesh3D _caveMesh;
+        [SerializeField]
+        protected CaveColliders3D _caveColliders;
 
         public CaveGenerator3D.Input caveInput = CaveGenerator3D.Input.Default;
 
@@ -25,6 +27,8 @@ namespace Custom.CaveGeneration
             BuildCaveMap();
             if (_caveMesh != null)
                 _caveMesh.Map = _caveMap;
+            if (_caveColliders != null)
+                _caveColliders.Map = _caveMap;
         }
 
         private void Start()
@@ -35,27 +39,36 @@ namespace Custom.CaveGeneration
 #if UNITY_EDITOR
         [Header("Gizmos")]
         [SerializeField]
-        protected bool _drawCaveMap;
+        protected Color _wallColor;
+        [SerializeField]
+        protected Color _roomColor;
 
         private void OnDrawGizmos()
         {
-            if (_drawCaveMap && _caveMap != null)
+            if (_caveMap != null && (_wallColor.a > 0.0f || _roomColor.a > 0.0f))
             {
                 var width = _caveMap.GetWidth();
                 var height = _caveMap.GetHeight();
                 var depth = _caveMap.GetDepth();
 
-                Gizmos.color = Color.cyan;
                 for (int x = 0; x < width; x++)
                 {
                     for (int y = 0; y < height; y++)
                     {
                         for (int z = 0; z < depth; z++)
                         {
-                            bool isWall = _caveMap[x][y][z];
-                            if (!isWall)
+                            var v = new Vector3(x, y, z);
+
+                            bool isRoom = _caveMap[x][y][z];
+                            if (!isRoom && _wallColor.a > 0.0f)
                             {
-                                Gizmos.DrawCube(new Vector3(x, y, z), Vector3.one * 0.9f);
+                                Gizmos.color = _wallColor;
+                                Gizmos.DrawWireSphere(v, 0.5f);
+                            }
+                            if (isRoom && _roomColor.a > 0.0f)
+                            {
+                                Gizmos.color = _roomColor;
+                                Gizmos.DrawWireSphere(v, 0.5f);
                             }
                         }
                     }

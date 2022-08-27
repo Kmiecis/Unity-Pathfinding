@@ -32,14 +32,20 @@ namespace Custom.Pathfinding
         {
             path = default;
 
-            if (!map[start.x, start.y] || !map[target.x, target.y])
+            if (map == null)
                 return false;
 
             var width = map.GetWidth();
             var height = map.GetHeight();
-            
-            var grid = new PF_Node[width * height];
+
             var gridRange = new Range2Int(0, 0, width - 1, height - 1);
+            if (!gridRange.Contains(start) || !gridRange.Contains(target))
+                return false;
+
+            if (!map[start.x, start.y] || !map[target.x, target.y])
+                return false;
+
+            var grid = new PF_Node[width * height];
 
             var startNodeIndex = start.x + start.y * width;
             var startNode = grid[startNodeIndex] = new PF_Node(start.x, start.y) { gScore = 0 };

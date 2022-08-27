@@ -7,7 +7,7 @@ using Common;
 namespace Custom.Pathfinding
 {
     [ExecuteInEditMode]
-    public class PF_Instance : MonoBehaviour
+    public class PF_Instance : MonoBehaviour, PF_IInstance
     {
         private static readonly Vector2[] kCorners = new Vector2[]
         {
@@ -20,19 +20,12 @@ namespace Custom.Pathfinding
         public Vector2 unit = new Vector2(1.0f, 1.0f);
         public Vector2 size = new Vector2(16.0f, 16.0f);
 
-        private static readonly List<PF_Instance> _instances = new List<PF_Instance>();
-
         private TransformWatcher _transformWatcher;
         private bool[,] _grid;
 
         public bool[,] Grid
         {
             get => _grid;
-        }
-
-        public static List<PF_Instance> Instances
-        {
-            get => _instances;
         }
 
         public Vector2 GridPosition
@@ -45,7 +38,7 @@ namespace Custom.Pathfinding
             get => Mathx.RoundToInt(size / unit);
         }
 
-        public Vector2 FromGridPosition(Vector2Int p)
+        public Vector2 ToWorldPosition(Vector2Int p)
         {
             return (Vector2)transform.position + p * unit;
         }
@@ -100,7 +93,7 @@ namespace Custom.Pathfinding
                         {
                             var offset = kCorners[o];
 
-                            var position = FromGridPosition(gridNode) + offset * unit;
+                            var position = ToWorldPosition(gridNode) + offset * unit;
                             walkable = !collider.Contains(position);
                         }
                     }
@@ -108,10 +101,29 @@ namespace Custom.Pathfinding
                 }
             }
         }
+        
+        public bool TryFindPath(Vector3 start, Vector3 target, out List<Vector3> path)
+        {
+            var startGridPosition = ToGridPosition(start);
+            var targetGridPosition = ToGridPosition(target);
+
+            if (PF_Core.TryFindPath(Grid, startGridPosition, targetGridPosition, out var gridPath))
+            {
+                path = new List<Vector3>();
+                path.Add(start);
+                foreach (var gridPosition in gridPath)
+                    path.Add(ToWorldPosition(gridPosition));
+                path.Add(target);
+                return true;
+            }
+
+            path = null;
+            return false;
+        }
 
         private void Awake()
         {
-            _instances.Add(this);
+            PF_IInstance.Instances.Add(this);
         }
 
         private void Start()
@@ -121,7 +133,7 @@ namespace Custom.Pathfinding
 
         private void OnDestroy()
         {
-            _instances.Remove(this);
+            PF_IInstance.Instances.Remove(this);
         }
 
 #if UNITY_EDITOR

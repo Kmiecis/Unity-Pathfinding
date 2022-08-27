@@ -52,23 +52,29 @@ namespace Custom.Pathfinding
         {
             path = default;
 
-            if (!map[start.x][start.y][start.z] || !map[target.x][target.y][target.z])
+            if (map == null)
                 return false;
 
             var width = map.GetWidth();
             var height = map.GetHeight();
             var depth = map.GetDepth();
 
-            var grid = new PF_Node3D[width * height * depth];
             var gridRange = new Range3Int(0, 0, 0, width - 1, height - 1, depth - 1);
+            if (!gridRange.Contains(start) || !gridRange.Contains(target))
+                return false;
 
-            var startNodeIndex = start.x + start.y * width + start.z * width * height;
+            if (!map[start.x][start.y][start.z] || !map[target.x][target.y][target.z])
+                return false;
+
+            var grid = new PF_Node3D[width * height * depth];
+
+            var startNodeIndex = start.x + (start.y + start.z * height) * width;
             var startNode = grid[startNodeIndex] = new PF_Node3D(start.x, start.y, start.z) { gScore = 0 };
 
-            var targetNodeIndex = target.x + target.y * width + start.z * width * height;
+            var targetNodeIndex = target.x + (target.y + target.z * height) * width;
             var targetNode = grid[targetNodeIndex] = new PF_Node3D(target.x, target.y, target.z);
 
-            var checkedArray = new ENodeState[width * height];
+            var checkedArray = new ENodeState[width * height * depth];
 
             var remaining = new List<PF_Node3D>() { startNode };
             while (remaining.Count > 0)
@@ -82,7 +88,7 @@ namespace Custom.Pathfinding
                 remaining.SwapLast(currentIndex);
                 remaining.RemoveLast();
 
-                var currentNodeIndex = currentNode.x + currentNode.y * width;
+                var currentNodeIndex = currentNode.x + (currentNode.y + currentNode.z * height) * width;
                 checkedArray[currentNodeIndex] = ENodeState.Checked;
 
                 for (int i = 0; i < kDirections.Length; i++)
@@ -99,7 +105,7 @@ namespace Custom.Pathfinding
                     if (!map[neighbourX][neighbourY][neighbourZ])
                         continue;
 
-                    var neighbourNodeIndex = neighbourX + neighbourY * width + neighbourZ * width * height;
+                    var neighbourNodeIndex = neighbourX + (neighbourY + neighbourZ * height) * width;
                     if (checkedArray[neighbourNodeIndex] == ENodeState.Checked)
                         continue;
 
@@ -159,29 +165,31 @@ namespace Custom.Pathfinding
             if (dx > dy)
             {
                 if (dz > dx)
-                {
-                    return H_MUL * dz + M_MUL * (dz - dx) + L_MUL * (dx - dy);
+                {   // dz > dx > dy
+                    return H_MUL * dy + M_MUL * (dx - dy) + L_MUL * (dz - dx);
                 }
                 // dx >= dz
                 if (dz > dy)
-                {
-                    return H_MUL * dx + M_MUL * (dx - dz) + L_MUL * (dz - dy);
+                {   // dx >= dz > dy
+                    return H_MUL * dy + M_MUL * (dz - dy) + L_MUL * (dx - dz);
                 }
                 // dy >= dz
-                return H_MUL * dx + M_MUL * (dx - dy) + L_MUL * (dy - dz);
+                // dx > dy >= dz
+                return H_MUL * dz + M_MUL * (dy - dz) + L_MUL * (dx - dy);
             }
             // dy >= dx
             if (dz > dy)
-            {
-                return H_MUL * dz + M_MUL * (dz - dy) + L_MUL * (dy - dx);
+            {   // dz > dy >= dx
+                return H_MUL * dx + M_MUL * (dy - dx) + L_MUL * (dz - dy);
             }
             // dy >= dz
             if (dz > dx)
-            {
-                return H_MUL * dy + M_MUL * (dy - dz) + L_MUL * (dz - dx);
+            {   // dy >= dz > dx
+                return H_MUL * dx + M_MUL * (dz - dx) + L_MUL * (dy - dz);
             }
             // dx >= dz
-            return H_MUL * dy + M_MUL * (dy - dx) + L_MUL * (dx - dz);
+            // dy >= dx >= dz
+            return H_MUL * dz + M_MUL * (dx - dz) + L_MUL * (dy - dx);
         }
 
         private static List<Vector3Int> GetPathFromNode(PF_Node3D node)
