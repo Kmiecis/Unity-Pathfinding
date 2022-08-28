@@ -48,31 +48,30 @@ namespace Custom.Pathfinding
             new Vector3Int( 0,  0,  1),
         };
 
-        public static bool TryFindPath(bool[][][] map, Vector3Int start, Vector3Int target, out List<Vector3Int> path)
+        public static bool TryFindPath(bool[] map, Vector3Int size, Vector3Int start, Vector3Int target, out List<Vector3Int> path)
         {
             path = default;
 
             if (map == null)
                 return false;
 
-            var width = map.GetWidth();
-            var height = map.GetHeight();
-            var depth = map.GetDepth();
+            var width = size.x;
+            var height = size.y;
+            var depth = size.z;
 
             var gridRange = new Range3Int(0, 0, 0, width - 1, height - 1, depth - 1);
             if (!gridRange.Contains(start) || !gridRange.Contains(target))
                 return false;
 
-            if (!map[start.x][start.y][start.z] || !map[target.x][target.y][target.z])
+            var startIndex = Mathx.ToIndex(start.x, start.y, start.z, width, height);
+            var targetIndex = Mathx.ToIndex(target.x, target.y, target.z, width, height);
+            if (!map[startIndex] || !map[targetIndex])
                 return false;
 
             var grid = new PF_Node3D[width * height * depth];
 
-            var startNodeIndex = start.x + (start.y + start.z * height) * width;
-            var startNode = grid[startNodeIndex] = new PF_Node3D(start.x, start.y, start.z) { gScore = 0 };
-
-            var targetNodeIndex = target.x + (target.y + target.z * height) * width;
-            var targetNode = grid[targetNodeIndex] = new PF_Node3D(target.x, target.y, target.z);
+            var startNode = grid[startIndex] = new PF_Node3D(start.x, start.y, start.z) { gScore = 0 };
+            var targetNode = grid[targetIndex] = new PF_Node3D(target.x, target.y, target.z);
 
             var checkedArray = new ENodeState[width * height * depth];
 
@@ -82,14 +81,13 @@ namespace Custom.Pathfinding
                 var currentIndex = GetLowestTotalCostNodeIndex(remaining);
                 var currentNode = remaining[currentIndex];
 
-                if (currentIndex == targetNodeIndex)
+                if (currentIndex == targetIndex)
                     break;
 
                 remaining.SwapLast(currentIndex);
                 remaining.RemoveLast();
 
-                var currentNodeIndex = currentNode.x + (currentNode.y + currentNode.z * height) * width;
-                checkedArray[currentNodeIndex] = ENodeState.Checked;
+                checkedArray[currentIndex] = ENodeState.Checked;
 
                 for (int i = 0; i < kDirections.Length; i++)
                 {
@@ -102,16 +100,16 @@ namespace Custom.Pathfinding
                     if (!gridRange.Contains(neighbourX, neighbourY, neighbourZ))
                         continue;
 
-                    if (!map[neighbourX][neighbourY][neighbourZ])
+                    var neighbourIndex = Mathx.ToIndex(neighbourX, neighbourY, neighbourZ, width, height);
+                    if (!map[neighbourIndex])
                         continue;
 
-                    var neighbourNodeIndex = neighbourX + (neighbourY + neighbourZ * height) * width;
-                    if (checkedArray[neighbourNodeIndex] == ENodeState.Checked)
+                    if (checkedArray[neighbourIndex] == ENodeState.Checked)
                         continue;
 
-                    var neighbourNode = grid[neighbourNodeIndex];
+                    var neighbourNode = grid[neighbourIndex];
                     if (neighbourNode == null)
-                        neighbourNode = grid[neighbourNodeIndex] = new PF_Node3D(neighbourX, neighbourY, neighbourZ);
+                        neighbourNode = grid[neighbourIndex] = new PF_Node3D(neighbourX, neighbourY, neighbourZ);
 
                     var totalCumulativeCost = currentNode.gScore + GetDistanceCost(currentNode, neighbourNode);
                     if (totalCumulativeCost < neighbourNode.gScore)
@@ -120,10 +118,10 @@ namespace Custom.Pathfinding
                         neighbourNode.gScore = totalCumulativeCost;
                         neighbourNode.fScore = totalCumulativeCost + GetDistanceCost(neighbourNode, targetNode);
 
-                        if (checkedArray[neighbourNodeIndex] < ENodeState.Added)
+                        if (checkedArray[neighbourIndex] < ENodeState.Added)
                         {
                             remaining.Add(neighbourNode);
-                            checkedArray[neighbourNodeIndex] = ENodeState.Added;
+                            checkedArray[neighbourIndex] = ENodeState.Added;
                         }
                     }
                 }

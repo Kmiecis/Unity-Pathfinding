@@ -1,4 +1,3 @@
-using Common;
 using Common.Extensions;
 using Common.Mathematics;
 using UnityEngine;
@@ -11,41 +10,31 @@ namespace Custom.CaveGeneration
         [SerializeField]
         protected Transform _parent;
 
-        private bool[][][] _map;
-
-        public bool[][][] Map
-        {
-            get => _map;
-            set
-            {
-                _map = value;
-                CheckColliders();
-                RegenerateColliders(_map, _parent);
-            }
-        }
-
-        private void CheckColliders()
+        public void SetMap(bool[] map, int width, int height, int depth)
         {
             _parent.DestroyChildren();
+            RegenerateColliders(map, width, height, depth, _parent);
         }
 
-        private static void RegenerateColliders(bool[][][] map, Transform parent)
+        private static void RegenerateColliders(bool[] map, int width, int height, int depth, Transform parent)
         {
-            var width = map.GetWidth();
-            var height = map.GetHeight();
-            var depth = map.GetDepth();
-
-            for (int x = 0; x < width - 1; x++)
+            for (int z = 0; z < depth - 1; z++)
             {
                 for (int y = 0; y < height - 1; y++)
                 {
-                    for (int z = 0; z < depth - 1; z++)
+                    for (int x = 0; x < width - 1; x++)
                     {
                         var v = new Vector3Int(x, y, z);
 
                         var c = MarchingCubes.GetConfiguration(
-                            !map[x][y][z], !map[x][y + 1][z], !map[x + 1][y + 1][z], !map[x + 1][y][z],
-                            !map[x][y][z + 1], !map[x][y + 1][z + 1], !map[x + 1][y + 1][z + 1], !map[x + 1][y][z + 1]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y + 1, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z + 1, width, height)]
                         );
 
                         if (c == 255)

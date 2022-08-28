@@ -1,6 +1,3 @@
-using Common;
-using Common.Collections;
-using Common.Extensions;
 using Common.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -39,127 +36,117 @@ namespace Custom.CaveGeneration
 
             public static readonly Input Default = new Input
             {
-                width = 64,
-                height = 64,
-                depth = 64,
-                smooths = 4,
+                width = 32,
+                height = 32,
+                depth = 32,
+                smooths = 2,
                 fill = 0.5f,
                 seed = "",
                 wallThreshold = 5,
                 roomThreshold = 5,
                 passageWidth = 2,
-                borderWidth = 2
+                borderWidth = 0
             };
         }
 
-        public static void Generate(bool[][][] map, in Input input)
+        public static void Generate(bool[] map, in Input input)
         {
             var random = new System.Random(input.seed.GetHashCode());
-            Noisex.GetRandomMap(map, input.fill, random);
-            ApplyBorder(map, input.borderWidth);
-            Noisex.SmoothRandomMap(map, input.smooths);
+            Noisex.GetRandomMap(map, input.width, input.height, input.depth, input.fill, random);
+            ApplyBorder(map, input.width, input.height, input.depth, input.borderWidth);
+            Noisex.SmoothRandomMap(map, input.width, input.height, input.depth, input.smooths);
 
-            var roomRegions = GetRegionsByType(map, kRoom);
+            var roomRegions = GetRegionsByType(map, input.width, input.height, input.depth, kRoom);
             var removedRoomRegions = RemoveRegionsUnderThreshold(roomRegions, input.roomThreshold);
-            FlipRegions(removedRoomRegions, map);
+            FlipRegions(removedRoomRegions, map, input.width, input.height);
 
-            var wallRegions = GetRegionsByType(map, kWall);
+            var wallRegions = GetRegionsByType(map, input.width, input.height, input.depth, kWall);
             var removedWallRegions = RemoveRegionsUnderThreshold(wallRegions, input.wallThreshold);
-            FlipRegions(removedWallRegions, map);
+            FlipRegions(removedWallRegions, map, input.width, input.height);
 
-            var rooms = CreateRooms(roomRegions, map);
+            var rooms = CreateRooms(roomRegions, map, input.width, input.height, input.depth);
             var passages = FindPassages(rooms);
-            ClearPassages(passages, map, input.passageWidth, input.borderWidth);
+            ClearPassages(passages, map, input.width, input.height, input.depth, input.passageWidth, input.borderWidth);
         }
 
-        private static void ApplyBorder(bool[][][] map, int border)
+        private static void ApplyBorder(bool[] map, int width, int height, int depth, int border)
         {
             if (border > 0)
             {
-                var width = map.GetWidth();
-                var height = map.GetHeight();
-                var depth = map.GetDepth();
-
                 for (int z = 0; z < depth; ++z)
                 {
                     for (int y = 0; y < height; y++)
                     {
                         for (int x = 0; x < border; x++)
                         {
-                            map[x][y][z] = kWall;
+                            int i = Mathx.ToIndex(x, y, z, width, height);
+                            map[i] = kWall;
                         }
 
                         for (int x = width - border; x < width; x++)
                         {
-                            map[x][y][z] = kWall;
+                            int i = Mathx.ToIndex(x, y, z, width, height);
+                            map[i] = kWall;
                         }
                     }
                 }
 
                 for (int x = border; x < width - border; x++)
                 {
-                    var mapY = map[x];
-
                     for (int y = 0; y < border; y++)
                     {
-                        var mapZ = mapY[y];
-
                         for (int z = 0; z < border; z++)
                         {
-                            mapZ[z] = kWall;
+                            int i = Mathx.ToIndex(x, y, z, width, height);
+                            map[i] = kWall;
                         }
 
                         for (int z = depth - border; z < depth; z++)
                         {
-                            mapZ[z] = kWall;
+                            int i = Mathx.ToIndex(x, y, z, width, height);
+                            map[i] = kWall;
                         }
                     }
 
                     for (int y = height - border - 1; y < height; y++)
                     {
-                        var mapZ = mapY[y];
-
                         for (int z = 0; z < border; z++)
                         {
-                            mapZ[z] = kWall;
+                            int i = Mathx.ToIndex(x, y, z, width, height);
+                            map[i] = kWall;
                         }
 
                         for (int z = depth - border; z < depth; z++)
                         {
-                            mapZ[z] = kWall;
+                            int i = Mathx.ToIndex(x, y, z, width, height);
+                            map[i] = kWall;
                         }
                     }
                 }
             }
         }
 
-        private static List<List<Vector3Int>> GetRegionsByType(bool[][][] map, bool type)
+        private static List<List<Vector3Int>> GetRegionsByType(bool[] map, int width, int height, int depth, bool type)
         {
             var result = new List<List<Vector3Int>>();
 
-            var width = map.GetWidth();
-            var height = map.GetHeight();
-            var depth = map.GetDepth();
-
-            var isChecked = Arrays.New<bool>(width, height, depth);
+            var isChecked = new bool[width * height * depth];
             var mapRange = new Range3Int(0, 0, 0, width - 1, height - 1, depth - 1);
 
-            for (int x = 0; x < width; x++)
+            for (int z = 0; z < depth; z++)
             {
                 for (int y = 0; y < height; y++)
                 {
-                    for (int z = 0; z < depth; z++)
+                    for (int x = 0; x < width; x++)
                     {
-                        if (
-                            !isChecked[x][y][z] &&
-                            map[x][y][z] == type
-                        )
+                        int i = Mathx.ToIndex(x, y, z, width, height);
+                        if (map[i] == type && !isChecked[i])
                         {
                             var region = new List<Vector3Int>();
                             var toCheck = new Queue<Vector3Int>();
 
                             toCheck.Enqueue(new Vector3Int(x, y, z));
-                            isChecked[x][y][z] = true;
+                            isChecked[i] = true;
 
                             while (toCheck.Count > 0)
                             {
@@ -169,15 +156,15 @@ namespace Custom.CaveGeneration
                                 foreach (var direction in Axes.All3D)
                                 {
                                     var neighbour = current + direction;
+                                    var ni = Mathx.ToIndex(neighbour.x, neighbour.y, neighbour.z, width, height);
 
                                     if (
                                         mapRange.Contains(neighbour) &&
-                                        !isChecked[neighbour.x][neighbour.y][neighbour.z] &&
-                                        map[neighbour.x][neighbour.y][neighbour.z] == type
+                                        map[ni] == type && !isChecked[ni]
                                     )
                                     {
                                         toCheck.Enqueue(neighbour);
-                                        isChecked[neighbour.x][neighbour.y][neighbour.z] = true;
+                                        isChecked[ni] = true;
                                     }
                                 }
                             }
@@ -209,26 +196,23 @@ namespace Custom.CaveGeneration
             return removed;
         }
 
-        private static void FlipRegions(List<List<Vector3Int>> regions, bool[][][] map)
+        private static void FlipRegions(List<List<Vector3Int>> regions, bool[] map, int width, int height)
         {
             foreach (var region in regions)
             {
                 foreach (var tile in region)
                 {
-                    map[tile.x][tile.y][tile.z] = !map[tile.x][tile.y][tile.z];
+                    var i = Mathx.ToIndex(tile.x, tile.y, tile.z, width, height);
+                    map[i] = !map[i];
                 }
             }
         }
 
-        private static List<List<Vector3Int>> CreateRooms(List<List<Vector3Int>> regions, bool[][][] map)
+        private static List<List<Vector3Int>> CreateRooms(List<List<Vector3Int>> regions, bool[] map, int width, int height, int depth)
         {
             var result = new List<List<Vector3Int>>();
 
-            var width = map.GetWidth();
-            var height = map.GetHeight();
-            var depth = map.GetDepth();
-
-            var isChecked = new Array3<bool>(width, height, depth);
+            var isChecked = new bool[width * height * depth];
             var mapRange = new Range3Int(0, 0, 0, width - 1, height - 1, depth - 1);
 
             foreach (var region in regions)
@@ -240,14 +224,15 @@ namespace Custom.CaveGeneration
                     foreach (var direction in Axes.All3D)
                     {
                         var neighbour = tile + direction;
+                        var ni = Mathx.ToIndex(neighbour.x, neighbour.y, neighbour.z, width, height);
+
                         if (
                             mapRange.Contains(neighbour) &&
-                            !isChecked[neighbour.x, neighbour.y, neighbour.z] &&
-                            map[neighbour.x][neighbour.y][neighbour.z] == kWall
+                            map[ni] == kWall && !isChecked[ni]
                         )
                         {
                             room.Add(neighbour);
-                            isChecked[neighbour.x, neighbour.y, neighbour.z] = true;
+                            isChecked[ni] = true;
                         }
                     }
                 }
@@ -395,7 +380,7 @@ namespace Custom.CaveGeneration
             return result;
         }
 
-        private static void ClearPassages(List<Line> passages, bool[][][] map, int passageWidth, int borderWidth)
+        private static void ClearPassages(List<Line> passages, bool[] map, int width, int height, int depth, int passageWidth, int borderWidth)
         {
             foreach (var passage in passages)
             {
@@ -403,27 +388,23 @@ namespace Custom.CaveGeneration
 
                 foreach (var tile in tiles)
                 {
-                    ClearCircle(tile, passageWidth, map, borderWidth);
+                    ClearCircle(tile, passageWidth, map, width, height, depth, borderWidth);
                 }
             }
         }
 
-        private static void ClearCircle(Vector3Int tile, int r, bool[][][] map, int borderWidth)
+        private static void ClearCircle(Vector3Int tile, int r, bool[] map, int width, int height, int depth, int borderWidth)
         {
-            var width = map.GetWidth();
-            var height = map.GetHeight();
-            var depth = map.GetDepth();
-
             var mapRange = new Range3Int(
                 borderWidth, borderWidth, borderWidth,
                 width - borderWidth - 1, height - borderWidth - 1, depth - borderWidth - 1
             );
 
-            for (int x = -r; x <= r; x++)
+            for (int z = -r; z <= r; z++)
             {
                 for (int y = -r; y <= r; y++)
                 {
-                    for (int z = -r; z <= r; z++)
+                    for (int x = -r; x <= r; x++)
                     {
                         if (x * x + y * y <= r * r)
                         {
@@ -431,7 +412,8 @@ namespace Custom.CaveGeneration
 
                             if (mapRange.Contains(clearTile))
                             {
-                                map[clearTile.x][clearTile.y][clearTile.z] = kRoom;
+                                var i = Mathx.ToIndex(clearTile.x, clearTile.y, clearTile.z, width, height);
+                                map[i] = kRoom;
                             }
                         }
                     }

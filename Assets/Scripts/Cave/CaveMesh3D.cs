@@ -11,74 +11,53 @@ namespace Custom.CaveGeneration
         [SerializeField]
         protected MeshFilter _filter;
 
-        private bool[][][] _map;
         private Mesh _mesh;
 
-        public bool[][][] Map
+        public void SetMap(bool[] map, int width, int height, int depth)
         {
-            get => _map;
-            set
+            _mesh = GetSharedMesh();
+            if (_mesh != null && map != null)
             {
-                _map = value;
-                CheckMesh(_map != null);
-                RegenerateMesh(_map, _mesh);
+                var builder = GenerateMeshBuilder(map, width, height, depth);
+                builder.Overwrite(_mesh);
             }
         }
 
-        private void CheckMesh(bool exists)
-        {
-            if (exists)
-            {
-                if (_mesh == null)
-                {
-                    _mesh = new Mesh();
-                    ApplyMeshToFilter(_mesh);
-                }
-            }
-            else
-            {
-                _mesh?.Destroy();
-                _mesh = null;
-                ApplyMeshToFilter(null);
-            }
-        }
-
-        private void ApplyMeshToFilter(Mesh mesh)
+        private Mesh GetSharedMesh()
         {
             if (_filter != null)
             {
-                _filter.sharedMesh = mesh; 
+                var mesh = _filter.sharedMesh;
+                if (mesh == null)
+                {
+                    _filter.sharedMesh = mesh = new Mesh();
+                }
+                return mesh;
             }
+            return null;
         }
 
-        private static void RegenerateMesh(bool[][][] map, Mesh mesh)
-        {
-            if (map != null && mesh != null)
-            {
-                var builder = GenerateMeshBuilder(map);
-                builder.Overwrite(mesh);
-            }
-        }
-
-        private static MeshBuilder GenerateMeshBuilder(bool[][][] map)
+        private static MeshBuilder GenerateMeshBuilder(bool[] map, int width, int height, int depth)
         {
             var result = new FlatMeshBuilder() { Options = EMeshBuildingOptions.NONE };
 
-            var width = map.GetWidth();
-            var height = map.GetHeight();
-            var depth = map.GetDepth();
-
-            for (int x = 0; x < width - 1; x++)
+            for (int z = 0; z < depth - 1; z++)
             {
                 for (int y = 0; y < height - 1; y++)
                 {
-                    for (int z = 0; z < depth - 1; z++)
+                    for (int x = 0; x < width - 1; x++)
                     {
                         var v = new Vector3(x, y, z);
 
                         var c = MarchingCubes.GetConfiguration(
-                            !map[x][y][z], !map[x][y + 1][z], !map[x + 1][y + 1][z], !map[x + 1][y][z],
-                            !map[x][y][z + 1], !map[x][y + 1][z + 1], !map[x + 1][y + 1][z + 1], !map[x + 1][y][z + 1]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y + 1, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z + 1, width, height)]
                         );
 
                         var ts = MarchingCubes.Triangles[c];
@@ -98,16 +77,19 @@ namespace Custom.CaveGeneration
                 }
             }
 
-            for (int y = 0; y < height - 1; y++)
+            for (int z = 0; z < depth - 1; z++)
             {
-                for (int z = 0; z < depth - 1; z++)
+                for (int y = 0; y < height - 1; y++)
                 {
                     int x = 0;
                     {
                         var v = new Vector3(x, y, z);
 
                         var c = MarchingSquares.GetConfiguration(
-                            !map[x][y][z], !map[x][y + 1][z], !map[x][y + 1][z + 1], !map[x][y][z + 1]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x, y, z + 1, width, height)]
                         );
 
                         var ts = MarchingSquares.Triangles[c];
@@ -130,7 +112,10 @@ namespace Custom.CaveGeneration
                         var v = new Vector3(x, y, z);
 
                         var c = MarchingSquares.GetConfiguration(
-                            !map[x][y][z], !map[x][y + 1][z], !map[x][y + 1][z + 1], !map[x][y][z + 1]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x, y, z + 1, width, height)]
                         );
 
                         var ts = MarchingSquares.Triangles[c];
@@ -150,16 +135,19 @@ namespace Custom.CaveGeneration
                 }
             }
 
-            for (int x = 0; x < width - 1; x++)
+            for (int z = 0; z < depth - 1; z++)
             {
-                for (int z = 0; z < depth - 1; z++)
+                for (int x = 0; x < width - 1; x++)
                 {
                     int y = 0;
                     {
                         var v = new Vector3(x, y, z);
 
                         var c = MarchingSquares.GetConfiguration(
-                            !map[x][y][z], !map[x][y][z + 1], !map[x + 1][y][z + 1], !map[x + 1][y][z]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z, width, height)]
                         );
 
                         var ts = MarchingSquares.Triangles[c];
@@ -182,7 +170,10 @@ namespace Custom.CaveGeneration
                         var v = new Vector3(x, y, z);
 
                         var c = MarchingSquares.GetConfiguration(
-                            !map[x][y][z], !map[x][y][z + 1], !map[x + 1][y][z + 1], !map[x + 1][y][z]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z + 1, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z, width, height)]
                         );
 
                         var ts = MarchingSquares.Triangles[c];
@@ -202,16 +193,19 @@ namespace Custom.CaveGeneration
                 }
             }
 
-            for (int x = 0; x < width - 1; x++)
+            for (int y = 0; y < height - 1; y++)
             {
-                for (int y = 0; y < height - 1; y++)
+                for (int x = 0; x < width - 1; x++)
                 {
                     int z = 0;
                     {
                         var v = new Vector3(x, y, z);
 
                         var c = MarchingSquares.GetConfiguration(
-                            !map[x][y][z], !map[x][y + 1][z], !map[x + 1][y + 1][z], !map[x + 1][y][z]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z, width, height)]
                         );
 
                         var ts = MarchingSquares.Triangles[c];
@@ -234,7 +228,10 @@ namespace Custom.CaveGeneration
                         var v = new Vector3(x, y, z);
 
                         var c = MarchingSquares.GetConfiguration(
-                            !map[x][y][z], !map[x][y + 1][z], !map[x + 1][y + 1][z], !map[x + 1][y][z]
+                            !map[Mathx.ToIndex(x, y, z, width, height)],
+                            !map[Mathx.ToIndex(x, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y + 1, z, width, height)],
+                            !map[Mathx.ToIndex(x + 1, y, z, width, height)]
                         );
 
                         var ts = MarchingSquares.Triangles[c];

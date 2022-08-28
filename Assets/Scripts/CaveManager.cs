@@ -1,5 +1,4 @@
-﻿using Common;
-using Common.Extensions;
+﻿using Common.Mathematics;
 using Custom.CaveGeneration;
 using System.Collections;
 using UnityEngine;
@@ -17,20 +16,21 @@ namespace Custom
 
         public CaveGenerator.Input caveInput = CaveGenerator.Input.Default;
 
-        private bool[][] _caveMap;
+        private bool[] _caveMap;
 
-        private void BuildCaveMap()
+        private bool[] BuildCaveMap()
         {
-            _caveMap = Arrays.New<bool>(caveInput.width, caveInput.height);
-            CaveGenerator.Generate(_caveMap, in caveInput);
+            var result = new bool[caveInput.width * caveInput.height];
+            CaveGenerator.Generate(result, in caveInput);
+            return result;
         }
         
         private void PositionGround()
         {
             if (_ground != null)
             {
-                var width = (_caveMap.GetWidth() - 1);
-                var height = (_caveMap.GetHeight() - 1);
+                var width = (caveInput.width - 1);
+                var height = (caveInput.height - 1);
 
                 var localPosition = _ground.localPosition;
                 var localScale = _ground.localScale;
@@ -47,11 +47,11 @@ namespace Custom
 
         public void Build()
         {
-            BuildCaveMap();
+            _caveMap = BuildCaveMap();
             if (_caveMesh != null)
-                _caveMesh.Map = _caveMap;
+                _caveMesh.SetMap(_caveMap, caveInput.width, caveInput.height);
             if (_caveCollider != null)
-                _caveCollider.Map = _caveMap;
+                _caveCollider.SetMap(_caveMap, caveInput.width, caveInput.height);
             PositionGround();
         }
 
@@ -69,16 +69,17 @@ namespace Custom
         {
             if (_drawCaveMap)
             {
-                var caveMapWidth = _caveMap.GetWidth();
-                var caveMapHeight = _caveMap.GetHeight();
+                var width = caveInput.width;
+                var height = caveInput.height;
 
-                for (int y = 0; y < caveMapHeight; y++)
+                for (int y = 0; y < height; y++)
                 {
-                    for (int x = 0; x < caveMapWidth; x++)
+                    for (int x = 0; x < width; x++)
                     {
-                        bool isWall = _caveMap[x][y];
+                        int i = Mathx.ToIndex(x, y, width);
+                        bool isWall = _caveMap[i];
                         Gizmos.color = isWall ? Color.black : Color.white;
-                        Gizmos.DrawWireSphere(new Vector3(x, y, -1.0f), 0.2f);
+                        Gizmos.DrawWireSphere(new Vector3(x, y, 0.0f), 0.2f);
                     }
                 }
             }

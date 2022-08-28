@@ -18,49 +18,37 @@ namespace Custom.CaveGeneration
         [SerializeField]
         protected PolygonCollider2D _collider;
 
-        private bool[][] _map;
-
-        public bool[][] Map
+        public void SetMap(bool[] map, int width, int height)
         {
-            set
+            if (_collider != null && map != null)
             {
-                _map = value;
-                RegenerateCollider(value);
-            }
-        }
-
-        private void RegenerateCollider(bool[][] map)
-        {
-            if (map != null && _collider != null)
-            {
-                var paths = GetColliderPaths(map);
+                var paths = GetColliderPaths(map, width, height);
                 _collider.pathCount = paths.Count + 1;
 
                 for (int i = 0; i < paths.Count; ++i)
                     _collider.SetPath(i, paths[i]);
 
-                var border = GetBorderPath(map);
+                var border = GetBorderPath(map, width, height);
                 _collider.SetPath(paths.Count, border);
             }
         }
 
-        private static List<List<Vector2>> GetColliderPaths(bool[][] map)
+        private static List<List<Vector2>> GetColliderPaths(bool[] map, int width, int height)
         {
             var result = new List<List<Vector2>>();
 
-            int width = map.GetWidth();
-            int height = map.GetHeight();
-
             var edges = new Dictionary<Vector2Int, VertexPair>();
+
+            const float kScale = 10.0f;
 
             Vector2Int VertexToKey(Vector2 v)
             {
-                return Mathx.RoundToInt(v * 10.0f);
+                return Mathx.RoundToInt(v * kScale);
             }
 
             Vector2 KeyToVertex(Vector2Int key)
             {
-                return Mathx.Div(key, 10.0f);
+                return Mathx.Div(key, kScale);
             }
 
             void AddEdge(Vector2 v0, Vector2 v1)
@@ -90,32 +78,30 @@ namespace Custom.CaveGeneration
             {
                 for (int x = 0; x < width - 1; ++x)
                 {
-                    var active0 = !map[x][y];
-                    var active1 = !map[x][y + 1];
-                    var active2 = !map[x + 1][y + 1];
-                    var active3 = !map[x + 1][y];
+                    var c = MarchingSquares.GetConfiguration(
+                        !map[Mathx.ToIndex(x, y, width)],
+                        !map[Mathx.ToIndex(x, y + 1, width)],
+                        !map[Mathx.ToIndex(x + 1, y + 1, width)],
+                        !map[Mathx.ToIndex(x + 1, y, width)]
+                    );
 
-                    var configuration = MarchingSquares.GetConfiguration(active0, active1, active2, active3);
-                    if (configuration > 0)
+                    var offset = new Vector2(x, y);
+
+                    var triangles = MarchingSquares.Triangles[c];
+                    for (int t = 0; t < triangles.Length; t += 3)
                     {
-                        var offset = new Vector2(x, y);
-
-                        var triangles = MarchingSquares.Triangles[configuration];
-                        for (int t = 0; t < triangles.Length; t += 3)
+                        for (int e0 = 2, e1 = 0; e1 < 3; e0 = e1, ++e1)
                         {
-                            for (int e0 = 2, e1 = 0; e1 < 3; e0 = e1, ++e1)
+                            var t0 = triangles[e0 + t];
+                            var t1 = triangles[e1 + t];
+
+                            if (t0 > 3 && t1 > 3) // 4 || 5 || 6 || 7
                             {
-                                var t0 = triangles[e0 + t];
-                                var t1 = triangles[e1 + t];
+                                var v0 = vertices[t0] + offset;
+                                var v1 = vertices[t1] + offset;
 
-                                if (t0 > 3 && t1 > 3) // 4 || 5 || 6 || 7
-                                {
-                                    var v0 = vertices[t0] + offset;
-                                    var v1 = vertices[t1] + offset;
-
-                                    AddEdge(v0, v1);
-                                    AddEdge(v1, v0);
-                                }
+                                AddEdge(v0, v1);
+                                AddEdge(v1, v0);
                             }
                         }
                     }
@@ -165,12 +151,9 @@ namespace Custom.CaveGeneration
             return result;
         }
 
-        private static List<Vector2> GetBorderPath(bool[][] map)
+        private static List<Vector2> GetBorderPath(bool[] map, int width, int height)
         {
             var result = new List<Vector2>();
-
-            var width = map.GetWidth();
-            var height = map.GetHeight();
 
             result.Add(new Vector2(0.0f, 0.0f));
             result.Add(new Vector2(0.0f, height - 1));
@@ -179,12 +162,5 @@ namespace Custom.CaveGeneration
 
             return result;
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            RegenerateCollider(_map);
-        }
-#endif
     }
 }

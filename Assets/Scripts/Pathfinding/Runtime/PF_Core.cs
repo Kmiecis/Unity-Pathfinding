@@ -18,42 +18,38 @@ namespace Custom.Pathfinding
 
         private static readonly Vector2Int[] kDirections = new Vector2Int[]
         {
-            new Vector2Int(-1, +0),
-            new Vector2Int(+0, +1),
-            new Vector2Int(+1, +0),
-            new Vector2Int(+0, -1),
+            new Vector2Int(-1,  0),
+            new Vector2Int( 0,  1),
+            new Vector2Int( 1,  0),
+            new Vector2Int( 0, -1),
             new Vector2Int(-1, -1),
-            new Vector2Int(-1, +1),
-            new Vector2Int(+1, +1),
-            new Vector2Int(+1, -1)
+            new Vector2Int(-1,  1),
+            new Vector2Int( 1,  1),
+            new Vector2Int( 1, -1)
         };
 
-        public static bool TryFindPath(bool[,] map, Vector2Int start, Vector2Int target, out List<Vector2Int> path)
+        public static bool TryFindPath(bool[] map, Vector2Int size, Vector2Int start, Vector2Int target, out List<Vector2Int> path)
         {
             path = default;
 
             if (map == null)
                 return false;
 
-            var width = map.GetWidth();
-            var height = map.GetHeight();
-
-            var gridRange = new Range2Int(0, 0, width - 1, height - 1);
+            var gridRange = new Range2Int(0, 0, size.x - 1, size.y - 1);
             if (!gridRange.Contains(start) || !gridRange.Contains(target))
                 return false;
 
-            if (!map[start.x, start.y] || !map[target.x, target.y])
+            var startIndex = Mathx.ToIndex(start.x, start.y, size.x);
+            var targetIndex = Mathx.ToIndex(target.x, target.y, size.x);
+            if (!map[startIndex] || !map[targetIndex])
                 return false;
 
-            var grid = new PF_Node[width * height];
+            var grid = new PF_Node[size.x * size.y];
 
-            var startNodeIndex = start.x + start.y * width;
-            var startNode = grid[startNodeIndex] = new PF_Node(start.x, start.y) { gScore = 0 };
+            var startNode = grid[startIndex] = new PF_Node(start.x, start.y) { gScore = 0 };
+            var targetNode = grid[targetIndex] = new PF_Node(target.x, target.y);
 
-            var targetNodeIndex = target.x + target.y * width;
-            var targetNode = grid[targetNodeIndex] = new PF_Node(target.x, target.y);
-
-            var checkedArray = new ENodeState[width * height];
+            var checkedArray = new ENodeState[size.x * size.y];
 
             var remaining = new List<PF_Node>() { startNode };
             while (remaining.Count > 0)
@@ -61,14 +57,13 @@ namespace Custom.Pathfinding
                 var currentIndex = GetLowestTotalCostNodeIndex(remaining);
                 var currentNode = remaining[currentIndex];
 
-                if (currentIndex == targetNodeIndex)
+                if (currentIndex == targetIndex)
                     break;
 
                 remaining.SwapLast(currentIndex);
                 remaining.RemoveLast();
 
-                var currentNodeIndex = currentNode.x + currentNode.y * width;
-                checkedArray[currentNodeIndex] = ENodeState.Checked;
+                checkedArray[currentIndex] = ENodeState.Checked;
 
                 for (int i = 0; i < kDirections.Length; i++)
                 {
@@ -80,16 +75,17 @@ namespace Custom.Pathfinding
                     if (!gridRange.Contains(neighbourX, neighbourY))
                         continue;
 
-                    if (!map[neighbourX, neighbourY])
+                    var neighbourIndex = Mathx.ToIndex(neighbourX, neighbourY, size.x);
+
+                    if (!map[neighbourIndex])
                         continue;
 
-                    var neighbourNodeIndex = neighbourX + neighbourY * width;
-                    if (checkedArray[neighbourNodeIndex] == ENodeState.Checked)
+                    if (checkedArray[neighbourIndex] == ENodeState.Checked)
                         continue;
 
-                    var neighbourNode = grid[neighbourNodeIndex];
+                    var neighbourNode = grid[neighbourIndex];
                     if (neighbourNode == null)
-                        neighbourNode = grid[neighbourNodeIndex] = new PF_Node(neighbourX, neighbourY);
+                        neighbourNode = grid[neighbourIndex] = new PF_Node(neighbourX, neighbourY);
 
                     var totalCumulativeCost = currentNode.gScore + GetDistanceCost(currentNode, neighbourNode);
                     if (totalCumulativeCost < neighbourNode.gScore)
@@ -98,10 +94,10 @@ namespace Custom.Pathfinding
                         neighbourNode.gScore = totalCumulativeCost;
                         neighbourNode.fScore = totalCumulativeCost + GetDistanceCost(neighbourNode, targetNode);
 
-                        if (checkedArray[neighbourNodeIndex] < ENodeState.Added)
+                        if (checkedArray[neighbourIndex] < ENodeState.Added)
                         {
                             remaining.Add(neighbourNode);
-                            checkedArray[neighbourNodeIndex] = ENodeState.Added;
+                            checkedArray[neighbourIndex] = ENodeState.Added;
                         }
                     }
                 }

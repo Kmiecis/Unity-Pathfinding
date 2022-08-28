@@ -20,10 +20,12 @@ namespace Custom.Pathfinding
         public Vector2 unit = new Vector2(1.0f, 1.0f);
         public Vector2 size = new Vector2(16.0f, 16.0f);
 
-        private TransformWatcher _transformWatcher;
-        private bool[,] _grid;
+        [SerializeField, HideInInspector]
+        private bool[] _grid;
 
-        public bool[,] Grid
+        private TransformWatcher _transformWatcher;
+
+        public bool[] Grid
         {
             get => _grid;
         }
@@ -56,33 +58,28 @@ namespace Custom.Pathfinding
 
         public bool Contains(Vector2Int p)
         {
+            var gsize = GridSize;
             return (
                 _grid != null &&
                 p.x > -1 && p.y > -1 &&
-                p.x < _grid.GetWidth() && p.y < _grid.GetHeight()
+                p.x < gsize.x && p.y < gsize.y
             );
         }
 
         public void Bake()
         {
-            var gridSize = GridSize;
-            if (
-                _grid == null ||
-                _grid.GetWidth() != gridSize.x ||
-                _grid.GetHeight() != gridSize.y
-            )
-            {
-                _grid = new bool[gridSize.x, gridSize.y];
-            }
+            var gsize = GridSize;
+            if (_grid == null || _grid.Length != gsize.x * gsize.y)
+                _grid = new bool[gsize.x * gsize.y];
 
-            var gridPosition = GridPosition;
-            var colliders = Physics2D.OverlapAreaAll(gridPosition, gridPosition + gridSize);
+            var gposition = GridPosition;
+            var colliders = Physics2D.OverlapAreaAll(gposition, gposition + gsize);
 
-            for (int y = 0; y < gridSize.y; ++y)
+            for (int y = 0; y < gsize.y; ++y)
             {
-                for (int x = 0; x < gridSize.x; ++x)
+                for (int x = 0; x < gsize.x; ++x)
                 {
-                    var gridNode = new Vector2Int(x, y);
+                    var gnode = new Vector2Int(x, y);
 
                     var walkable = true;
                     for (int c = 0; c < colliders.Length && walkable; ++c)
@@ -93,11 +90,13 @@ namespace Custom.Pathfinding
                         {
                             var offset = kCorners[o];
 
-                            var position = ToWorldPosition(gridNode) + offset * unit;
+                            var position = ToWorldPosition(gnode) + offset * unit;
                             walkable = !collider.Contains(position);
                         }
                     }
-                    _grid[x, y] = walkable;
+
+                    var gi = Mathx.ToIndex(x, y, gsize.x);
+                    _grid[gi] = walkable;
                 }
             }
         }
@@ -107,7 +106,7 @@ namespace Custom.Pathfinding
             var startGridPosition = ToGridPosition(start);
             var targetGridPosition = ToGridPosition(target);
 
-            if (PF_Core.TryFindPath(Grid, startGridPosition, targetGridPosition, out var gridPath))
+            if (PF_Core.TryFindPath(Grid, GridSize, startGridPosition, targetGridPosition, out var gridPath))
             {
                 path = new List<Vector3>();
                 path.Add(start);
@@ -138,7 +137,7 @@ namespace Custom.Pathfinding
 
 #if UNITY_EDITOR
         private static readonly Color kWallColor = Color.yellow.WithAlpha(0.25f);
-        private static readonly Color kWalkColor = Color.cyan.WithAlpha(0.5f);
+        private static readonly Color kRoomColor = Color.cyan.WithAlpha(0.5f);
 
         [Header("Editor")]
         public bool autoBake;
@@ -173,10 +172,10 @@ namespace Custom.Pathfinding
                 {
                     for (int x = 0; x < gridSize.x; ++x)
                     {
-                        if (_grid[x, y])
+                        int gi = Mathx.ToIndex(x, y, gridSize.x);
+                        if (_grid[gi])
                         {
-                            var i = x + y * gridSize.x;
-                            array[i] = Vector2Int.one;
+                            array[gi] = Vector2Int.one;
                         }
                     }
                 }
@@ -240,7 +239,7 @@ namespace Custom.Pathfinding
                             var position = gridPosition + new Vector2(x + 1, y + 1) * unit - size;
 
                             Rects.GetVertices(rect, position, size, Quaternion.identity);
-                            UnityEditor.Handles.DrawSolidRectangleWithOutline(rect, kWalkColor, kWalkColor);
+                            UnityEditor.Handles.DrawSolidRectangleWithOutline(rect, kRoomColor, kRoomColor);
                         }
                     }
                 }

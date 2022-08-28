@@ -24,10 +24,12 @@ namespace Custom.Pathfinding
         public Vector3 unit = new Vector3(1.0f, 1.0f, 1.0f);
         public Vector3 size = new Vector3(16.0f, 16.0f, 16.0f);
 
-        private TransformWatcher _transformWatcher;
-        private bool[][][] _grid;
+        [SerializeField, HideInInspector]
+        private bool[] _grid;
 
-        public bool[][][] Grid
+        private TransformWatcher _transformWatcher;
+
+        public bool[] Grid
         {
             get => _grid;
         }
@@ -60,37 +62,31 @@ namespace Custom.Pathfinding
 
         public bool Contains(Vector3Int p)
         {
+            var gsize = GridSize;
             return (
                 _grid != null &&
                 p.x > -1 && p.y > -1 && p.z > -1 &&
-                p.x < _grid.GetWidth() && p.y < _grid.GetHeight() && p.z < _grid.GetDepth()
+                p.x < gsize.x && p.y < gsize.y && p.z < gsize.z
             );
         }
 
         public void Bake()
         {
-            var gridSize = GridSize;
-            if (
-                _grid == null ||
-                _grid.GetWidth() != gridSize.x ||
-                _grid.GetHeight() != gridSize.y ||
-                _grid.GetDepth() != gridSize.z
-            )
-            {
-                _grid = Arrays.New<bool>(gridSize.x, gridSize.y, gridSize.z);
-            }
+            var gsize = GridSize;
+            if (_grid == null || _grid.Length != gsize.x * gsize.y * gsize.z)
+                _grid = new bool[gsize.x * gsize.y * gsize.z];
 
-            var gridPosition = GridPosition;
-            var halfGridSize = Mathx.Mul(gridSize, 0.5f);
-            var colliders = Physics.OverlapBox(gridPosition + halfGridSize, halfGridSize);
+            var gposition = GridPosition;
+            var halfGridSize = Mathx.Mul(gsize, 0.5f);
+            var colliders = Physics.OverlapBox(gposition + halfGridSize, halfGridSize);
 
-            for (int x = 0; x < gridSize.x; ++x)
+            for (int z = 0; z < gsize.z; z++)
             {
-                for (int y = 0; y < gridSize.y; ++y)
+                for (int y = 0; y < gsize.y; ++y)
                 {
-                    for (int z = 0; z < gridSize.z; z++)
+                    for (int x = 0; x < gsize.x; ++x)
                     {
-                        var gridNode = new Vector3Int(x, y, z);
+                        var gnode = new Vector3Int(x, y, z);
 
                         var walkable = true;
                         for (int c = 0; c < colliders.Length && walkable; ++c)
@@ -101,11 +97,13 @@ namespace Custom.Pathfinding
                             {
                                 var offset = kCorners[o];
 
-                                var position = ToWorldPosition(gridNode) + Mathx.Mul(offset, unit);
+                                var position = ToWorldPosition(gnode) + Mathx.Mul(offset, unit);
                                 walkable = !collider.Contains(position);
                             }
                         }
-                        _grid[x][y][z] = walkable;
+
+                        int gi = Mathx.ToIndex(x, y, z, gsize.x, gsize.y);
+                        _grid[gi] = walkable;
                     }
                 }
             }
@@ -116,7 +114,7 @@ namespace Custom.Pathfinding
             var startGridPosition = ToGridPosition(start);
             var targetGridPosition = ToGridPosition(target);
 
-            if (PF_Core3D.TryFindPath(Grid, startGridPosition, targetGridPosition, out var gridPath))
+            if (PF_Core3D.TryFindPath(Grid, GridSize, startGridPosition, targetGridPosition, out var gridPath))
             {
                 path = new List<Vector3>();
                 path.Add(start);
@@ -171,34 +169,34 @@ namespace Custom.Pathfinding
         {
             if (showGrid && _grid != null)
             {
-                var gridSize = GridSize;
+                var gsize = GridSize;
                 var gridPosition = GridPosition;
 
-                var array = new Vector3Int[gridSize.x * gridSize.y * gridSize.z];
+                var array = new Vector3Int[gsize.x * gsize.y * gsize.z];
 
-                for (int x = 0; x < gridSize.x; ++x)
+                for (int z = 0; z < gsize.z; z++)
                 {
-                    for (int y = 0; y < gridSize.y; ++y)
+                    for (int y = 0; y < gsize.y; ++y)
                     {
-                        for (int z = 0; z < gridSize.z; z++)
+                        for (int x = 0; x < gsize.x; ++x)
                         {
-                            if (_grid[x][y][z])
+                            int i = Mathx.ToIndex(x, y, z, gsize.x, gsize.y);
+                            if (_grid[i])
                             {
-                                var i = x + y * gridSize.x + z * gridSize.x * gridSize.y;
                                 array[i] = Vector3Int.one;
                             }
                         }
                     }
                 }
 
-                for (int y = 0; y < gridSize.y; ++y)
+                for (int y = 0; y < gsize.y; ++y)
                 {
-                    for (int z = 0; z < gridSize.z; z++)
+                    for (int z = 0; z < gsize.z; z++)
                     {
-                        for (int x = 1; x < gridSize.x; ++x)
+                        for (int x = 1; x < gsize.x; ++x)
                         {
-                            int i = x + (y + z * gridSize.y) * gridSize.x;
-                            int j = (x - 1) + (y + z * gridSize.y) * gridSize.x;
+                            int i = x + (y + z * gsize.y) * gsize.x;
+                            int j = (x - 1) + (y + z * gsize.y) * gsize.x;
 
                             var vi = array[i];
                             var vj = array[j];
@@ -215,14 +213,14 @@ namespace Custom.Pathfinding
                     }
                 }
 
-                for (int x = 0; x < gridSize.x; ++x)
+                for (int x = 0; x < gsize.x; ++x)
                 {
-                    for (int z = 0; z < gridSize.z; z++)
+                    for (int z = 0; z < gsize.z; z++)
                     {
-                        for (int y = 1; y < gridSize.y; ++y)
+                        for (int y = 1; y < gsize.y; ++y)
                         {
-                            var i = x + (y + z * gridSize.y) * gridSize.x;
-                            var j = x + ((y - 1) + z * gridSize.y) * gridSize.x;
+                            var i = x + (y + z * gsize.y) * gsize.x;
+                            var j = x + ((y - 1) + z * gsize.y) * gsize.x;
 
                             var vi = array[i];
                             var vj = array[j];
@@ -239,14 +237,14 @@ namespace Custom.Pathfinding
                     }
                 }
 
-                for (int x = 0; x < gridSize.x; x++)
+                for (int x = 0; x < gsize.x; x++)
                 {
-                    for (int y = 0; y < gridSize.y; y++)
+                    for (int y = 0; y < gsize.y; y++)
                     {
-                        for (int z = 1; z < gridSize.z; z++)
+                        for (int z = 1; z < gsize.z; z++)
                         {
-                            var i = x + (y + z * gridSize.y) * gridSize.x;
-                            var j = x + (y + (z - 1) * gridSize.y) * gridSize.x;
+                            var i = x + (y + z * gsize.y) * gsize.x;
+                            var j = x + (y + (z - 1) * gsize.y) * gsize.x;
 
                             var vi = array[i];
                             var vj = array[j];
@@ -264,13 +262,13 @@ namespace Custom.Pathfinding
                 }
 
                 Gizmos.color = gridColor;
-                for (int x = 0; x < gridSize.x; ++x)
+                for (int x = 0; x < gsize.x; ++x)
                 {
-                    for (int y = 0; y < gridSize.y; ++y)
+                    for (int y = 0; y < gsize.y; ++y)
                     {
-                        for (int z = 0; z < gridSize.z; z++)
+                        for (int z = 0; z < gsize.z; z++)
                         {
-                            var i = x + (y + z * gridSize.y) * gridSize.x;
+                            var i = x + (y + z * gsize.y) * gsize.x;
                             var vi = array[i];
 
                             if (vi.x > 0 && vi.y > 0 && vi.z > 0)

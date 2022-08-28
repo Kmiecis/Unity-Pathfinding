@@ -14,60 +14,35 @@ namespace Custom.CaveGeneration
         [SerializeField]
         protected float _wallHeight = 1.0f;
 
-        private bool[][] _map;
         private Mesh _mesh;
 
-        public bool[][] Map
+        public void SetMap(bool[] map, int width, int height)
         {
-            set
+            _mesh = GetSharedMesh();
+            if (_mesh != null && map != null)
             {
-                _map = value;
-                CheckMesh(value);
-                RegenerateMesh(value);
-            }
-        }
-
-        private void CheckMesh(bool[][] map)
-        {
-            if (map == null)
-            {
-                _mesh?.Destroy();
-                _mesh = null;
-                ApplyMeshToFilter(null);
-            }
-            else
-            {
-                if (_mesh == null)
-                {
-                    _mesh = new Mesh();
-                    ApplyMeshToFilter(_mesh);
-                }
-            }
-        }
-
-        private void ApplyMeshToFilter(Mesh mesh)
-        {
-            if (_filter != null)
-            {
-                _filter.sharedMesh = mesh;
-            }
-        }
-        
-        private void RegenerateMesh(bool[][] map)
-        {
-            if (map != null && _mesh != null)
-            {
-                var builder = GenerateMeshBuilder(map, _wallHeight);
+                var builder = GenerateMeshBuilder(map, width, height, _wallHeight);
                 builder.Overwrite(_mesh);
             }
         }
 
-        private static MeshBuilder GenerateMeshBuilder(bool[][] map, float wallHeight)
+        private Mesh GetSharedMesh()
+        {
+            if (_filter != null)
+            {
+                var mesh = _filter.sharedMesh;
+                if (mesh == null)
+                {
+                    _filter.sharedMesh = mesh = new Mesh();
+                }
+                return mesh;
+            }
+            return null;
+        }
+
+        private static MeshBuilder GenerateMeshBuilder(bool[] map, int width, int height, float wallHeight)
         {
             var builder = new FlatMeshBuilder() { Options = EMeshBuildingOptions.NONE };
-
-            var width = map.GetWidth();
-            var height = map.GetHeight();
 
             var wallOffset = new Vector3(0.0f, 0.0f, wallHeight);
 
@@ -80,7 +55,10 @@ namespace Custom.CaveGeneration
                     var v = new Vector3(x, y);
 
                     var c = MarchingSquares.GetConfiguration(
-                        !map[x][y], !map[x][y + 1], !map[x + 1][y + 1], !map[x + 1][y]
+                        !map[Mathx.ToIndex(x, y, width)],
+                        !map[Mathx.ToIndex(x, y + 1, width)],
+                        !map[Mathx.ToIndex(x + 1, y + 1, width)],
+                        !map[Mathx.ToIndex(x + 1, y, width)]
                     );
 
                     int i = 0;
@@ -136,12 +114,5 @@ namespace Custom.CaveGeneration
         {
             _mesh?.Destroy();
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            RegenerateMesh(_map);
-        }
-#endif
     }
 }

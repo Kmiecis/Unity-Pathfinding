@@ -1,5 +1,4 @@
-using Common;
-using Common.Extensions;
+using Common.Mathematics;
 using System.Collections;
 using UnityEngine;
 
@@ -14,21 +13,22 @@ namespace Custom.CaveGeneration
 
         public CaveGenerator3D.Input caveInput = CaveGenerator3D.Input.Default;
 
-        private bool[][][] _caveMap;
+        private bool[] _caveMap;
 
-        private void BuildCaveMap()
+        private bool[] BuildCaveMap()
         {
-            _caveMap = Arrays.New<bool>(caveInput.width, caveInput.height, caveInput.depth);
-            CaveGenerator3D.Generate(_caveMap, in caveInput);
+            var result = new bool[caveInput.width * caveInput.height * caveInput.depth];
+            CaveGenerator3D.Generate(result, in caveInput);
+            return result;
         }
 
         public void Build()
         {
-            BuildCaveMap();
+            _caveMap = BuildCaveMap();
             if (_caveMesh != null)
-                _caveMesh.Map = _caveMap;
+                _caveMesh.SetMap(_caveMap, caveInput.width, caveInput.height, caveInput.depth);
             if (_caveColliders != null)
-                _caveColliders.Map = _caveMap;
+                _caveColliders.SetMap(_caveMap, caveInput.width, caveInput.height, caveInput.depth);
         }
 
         private void Start()
@@ -47,9 +47,9 @@ namespace Custom.CaveGeneration
         {
             if (_caveMap != null && (_wallColor.a > 0.0f || _roomColor.a > 0.0f))
             {
-                var width = _caveMap.GetWidth();
-                var height = _caveMap.GetHeight();
-                var depth = _caveMap.GetDepth();
+                var width = caveInput.width;
+                var height = caveInput.height;
+                var depth = caveInput.depth;
 
                 for (int x = 0; x < width; x++)
                 {
@@ -58,8 +58,9 @@ namespace Custom.CaveGeneration
                         for (int z = 0; z < depth; z++)
                         {
                             var v = new Vector3(x, y, z);
+                            int i = Mathx.ToIndex(x, y, z, width, height);
 
-                            bool isRoom = _caveMap[x][y][z];
+                            bool isRoom = _caveMap[i];
                             if (!isRoom && _wallColor.a > 0.0f)
                             {
                                 Gizmos.color = _wallColor;
