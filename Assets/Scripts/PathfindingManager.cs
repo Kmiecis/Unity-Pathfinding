@@ -3,7 +3,7 @@ using Custom.Pathfinding;
 using UnityEngine;
 using Random = System.Random;
 
-namespace Custom
+namespace Common
 {
     public class PathfindingManager : MonoBehaviour
     {
@@ -31,7 +31,10 @@ namespace Custom
                     agent.TryMove(position);
                     break;
                 }
-                else if (instance is PF_Instance3D instance3D)
+                else if (
+                    instance is PF_Instance3D instance3D &&
+                    instance3D.Contains(agentPosition)
+                )
                 {
                     var min = instance3D.GridPosition;
                     var max = min + instance3D.GridSize;

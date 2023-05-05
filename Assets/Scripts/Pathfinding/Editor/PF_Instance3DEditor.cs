@@ -1,17 +1,15 @@
-﻿#if UNITY_EDITOR
+﻿using Custom.Pathfinding;
 using UnityEditor;
 using UnityEngine;
 
-namespace Custom.Pathfinding
+namespace CommonEditor.Pathfinding
 {
     [CanEditMultipleObjects]
     [CustomEditor(typeof(PF_Instance3D))]
     public class PF_Instance3DEditor : Editor
     {
         private PF_Instance3D Script
-        {
-            get => (PF_Instance3D)target;
-        }
+            => (PF_Instance3D)target;
 
         public override void OnInspectorGUI()
         {
@@ -28,4 +26,3 @@ namespace Custom.Pathfinding
         }
     }
 }
-#endif

@@ -3,7 +3,7 @@ using Custom.CaveGeneration;
 using System.Collections;
 using UnityEngine;
 
-namespace Custom
+namespace Common
 {
     public class CaveManager : MonoBehaviour
     {

@@ -8,13 +8,10 @@ namespace Custom.Pathfinding
         public readonly int x;
         public readonly int y;
 
-        /// <summary> Cumulative score </summary>
-        public int gScore = int.MaxValue;
-        /// <summary> Distance score </summary>
-        public int hScore;
-        /// <summary> Total score </summary>
-        public int fScore;
+        public int cost = int.MaxValue;
+        public int totalcost;
 
+        public PF_ENodeState state = PF_ENodeState.Idle;
         public PF_Node link = null;
 
         public PF_Node(int x, int y)

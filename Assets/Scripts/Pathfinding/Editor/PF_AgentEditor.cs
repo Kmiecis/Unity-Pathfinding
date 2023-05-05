@@ -1,14 +1,15 @@
-#if UNITY_EDITOR
+using Custom.Pathfinding;
 using UnityEditor;
 using UnityEngine;
 
-namespace Custom.Pathfinding
+namespace CommonEditor.Pathfinding
 {
     [CanEditMultipleObjects]
     [CustomEditor(typeof(PF_Agent))]
     public class PF_AgentEditor : Editor
     {
-        private PF_Agent Script => (PF_Agent)target;
+        private PF_Agent Script
+            => (PF_Agent)target;
 
         public override void OnInspectorGUI()
         {
@@ -25,4 +26,3 @@ namespace Custom.Pathfinding
         }
     }
 }
-#endif

@@ -1,5 +1,4 @@
 using Common.Extensions;
-using Common.Mathematics;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,14 +7,6 @@ namespace Custom.Pathfinding
 {
     public static class PF_Core3D
     {
-        [Flags]
-        private enum ENodeState : byte
-        {
-            Idle = 0,
-            Added = 1,
-            Checked = 2
-        }
-
         private static readonly Vector3Int[] kDirections = new Vector3Int[]
         {
             new Vector3Int(-1, -1, -1),
@@ -48,32 +39,15 @@ namespace Custom.Pathfinding
             new Vector3Int( 0,  0,  1),
         };
 
-        public static bool TryFindPath(bool[] map, Vector3Int size, Vector3Int start, Vector3Int target, out List<Vector3Int> path)
+        public static bool TryFindPath(PF_IMapper3D mapper, Vector3Int start, Vector3Int target, out List<Vector3Int> path)
         {
-            path = default;
+            var nodes = new Dictionary<Vector3Int, PF_Node3D>();
 
-            if (map == null)
-                return false;
+            var startNode = new PF_Node3D(start.x, start.y, start.z) { cost = 0 };
+            var targetNode = new PF_Node3D(target.x, target.y, target.z);
 
-            var width = size.x;
-            var height = size.y;
-            var depth = size.z;
-
-            var gridRange = new Range3Int(0, 0, 0, width - 1, height - 1, depth - 1);
-            if (!gridRange.Contains(start) || !gridRange.Contains(target))
-                return false;
-
-            var startIndex = Mathx.ToIndex(start.x, start.y, start.z, width, height);
-            var targetIndex = Mathx.ToIndex(target.x, target.y, target.z, width, height);
-            if (!map[startIndex] || !map[targetIndex])
-                return false;
-
-            var grid = new PF_Node3D[width * height * depth];
-
-            var startNode = grid[startIndex] = new PF_Node3D(start.x, start.y, start.z) { gScore = 0 };
-            var targetNode = grid[targetIndex] = new PF_Node3D(target.x, target.y, target.z);
-
-            var checkedArray = new ENodeState[width * height * depth];
+            nodes[start] = startNode;
+            nodes[target] = targetNode;
 
             var remaining = new List<PF_Node3D>() { startNode };
             while (remaining.Count > 0)
@@ -81,54 +55,55 @@ namespace Custom.Pathfinding
                 var currentIndex = GetLowestTotalCostNodeIndex(remaining);
                 var currentNode = remaining[currentIndex];
 
-                if (currentIndex == targetIndex)
+                if (currentNode == targetNode)
                     break;
 
-                remaining.SwapLast(currentIndex);
-                remaining.RemoveLast();
+                remaining[currentIndex] = remaining[remaining.Count - 1];
+                remaining.RemoveAt(remaining.Count - 1);
 
-                checkedArray[currentIndex] = ENodeState.Checked;
+                currentNode.state = PF_ENodeState.Checked;
 
                 for (int i = 0; i < kDirections.Length; i++)
                 {
                     var direction = kDirections[i];
 
-                    var neighbourX = currentNode.x + direction.x;
-                    var neighbourY = currentNode.y + direction.y;
-                    var neighbourZ = currentNode.z + direction.z;
+                    var neighbourPos = new Vector3Int(
+                        currentNode.x + direction.x,
+                        currentNode.y + direction.y,
+                        currentNode.z + direction.z
+                    );
 
-                    if (!gridRange.Contains(neighbourX, neighbourY, neighbourZ))
+                    if (!mapper.IsWalkable(neighbourPos))
                         continue;
 
-                    var neighbourIndex = Mathx.ToIndex(neighbourX, neighbourY, neighbourZ, width, height);
-                    if (!map[neighbourIndex])
+                    if (!nodes.TryGetValue(neighbourPos, out var neighbourNode))
+                        nodes[neighbourPos] = neighbourNode = new PF_Node3D(neighbourPos.x, neighbourPos.y, neighbourPos.z);
+
+                    if (neighbourNode.state == PF_ENodeState.Checked)
                         continue;
 
-                    if (checkedArray[neighbourIndex] == ENodeState.Checked)
-                        continue;
-
-                    var neighbourNode = grid[neighbourIndex];
-                    if (neighbourNode == null)
-                        neighbourNode = grid[neighbourIndex] = new PF_Node3D(neighbourX, neighbourY, neighbourZ);
-
-                    var totalCumulativeCost = currentNode.gScore + GetDistanceCost(currentNode, neighbourNode);
-                    if (totalCumulativeCost < neighbourNode.gScore)
+                    var totalCost = currentNode.cost + GetDistanceCost(currentNode, neighbourNode) + mapper.GetWalkCost(neighbourPos);
+                    if (totalCost < neighbourNode.cost)
                     {
                         neighbourNode.link = currentNode;
-                        neighbourNode.gScore = totalCumulativeCost;
-                        neighbourNode.fScore = totalCumulativeCost + GetDistanceCost(neighbourNode, targetNode);
+                        neighbourNode.cost = totalCost;
+                        neighbourNode.totalcost = totalCost + GetDistanceCost(neighbourNode, targetNode);
 
-                        if (checkedArray[neighbourIndex] < ENodeState.Added)
+                        if (neighbourNode.state < PF_ENodeState.Added)
                         {
                             remaining.Add(neighbourNode);
-                            checkedArray[neighbourIndex] = ENodeState.Added;
+                            neighbourNode.state = PF_ENodeState.Added;
                         }
                     }
                 }
             }
 
             path = GetPathFromNode(targetNode);
-            return path.Count > 1;
+            if (path.Count < 2)
+                return false;
+
+            path.RemoveAt(path.Count - 1);
+            return true;
         }
 
         private static int GetLowestTotalCostNodeIndex(List<PF_Node3D> nodes)
@@ -140,7 +115,7 @@ namespace Custom.Pathfinding
             {
                 var nodeB = nodes[i];
 
-                if (nodeA.fScore > nodeB.fScore)
+                if (nodeA.totalcost > nodeB.totalcost)
                 {
                     result = i;
                     nodeA = nodeB;
@@ -192,22 +167,27 @@ namespace Custom.Pathfinding
 
         private static List<Vector3Int> GetPathFromNode(PF_Node3D node)
         {
-            var nodes = new List<Vector3Int>();
+            var result = new List<Vector3Int>();
             while (node != null)
             {
-                nodes.Add(new Vector3Int(node.x, node.y, node.z));
+                result.Add(new Vector3Int(node.x, node.y, node.z));
                 node = node.link;
             }
+            return result;
+        }
 
+        public static List<Vector3Int> GetTrimmedPath(List<Vector3Int> path)
+        {
             var result = new List<Vector3Int>();
-            if (nodes.First() != nodes.Last())
+
+            if (path.First() != path.Last())
             {
-                result.Add(nodes.Last());
-                for (int i = nodes.Count - 2; i > 0; --i)
+                result.Add(path.Last());
+                for (int i = path.Count - 2; i > 0; --i)
                 {
-                    var prev = nodes[i + 1];
-                    var current = nodes[i];
-                    var next = nodes[i - 1];
+                    var prev = path[i + 1];
+                    var current = path[i];
+                    var next = path[i - 1];
 
                     if (
                         next.x - current.x != current.x - prev.x ||
@@ -218,7 +198,7 @@ namespace Custom.Pathfinding
                         result.Add(current);
                     }
                 }
-                result.Add(nodes.First());
+                result.Add(path.First());
             }
 
             return result;

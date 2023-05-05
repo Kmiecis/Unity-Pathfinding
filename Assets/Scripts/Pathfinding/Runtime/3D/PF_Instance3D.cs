@@ -1,13 +1,13 @@
-using UnityEngine;
+using Common;
 using Common.Extensions;
 using Common.Mathematics;
 using System.Collections.Generic;
-using Common;
+using UnityEngine;
 
 namespace Custom.Pathfinding
 {
     [ExecuteInEditMode]
-    public class PF_Instance3D : MonoBehaviour, PF_IInstance
+    public class PF_Instance3D : MonoBehaviour, PF_IInstance, PF_IMapper3D
     {
         private static readonly Vector3[] kCorners = new Vector3[]
         {
@@ -70,12 +70,28 @@ namespace Custom.Pathfinding
             );
         }
 
-        public void Bake()
+        public bool IsWalkable(Vector3Int p)
         {
             var gsize = GridSize;
-            if (_grid == null || _grid.Length != gsize.x * gsize.y * gsize.z)
-                _grid = new bool[gsize.x * gsize.y * gsize.z];
+            var index = Mathx.ToIndex(p.x, p.y, p.z, gsize.x, gsize.y);
+            return (
+                _grid != null &&
+                p.x > -1 && p.y > -1 && p.z > -1 &&
+                p.x < gsize.x && p.y < gsize.y && p.z < gsize.z &&
+                _grid[index]
+            );
+        }
 
+        public int GetWalkCost(Vector3Int p)
+        {
+            return 0; // To override
+        }
+
+        public void Bake()
+        {
+            CheckGrid();
+
+            var gsize = GridSize;
             var gposition = GridPosition;
             var halfGridSize = Mathx.Mul(gsize, 0.5f);
             var colliders = Physics.OverlapBox(gposition + halfGridSize, halfGridSize);
@@ -114,10 +130,11 @@ namespace Custom.Pathfinding
             var startGridPosition = ToGridPosition(start);
             var targetGridPosition = ToGridPosition(target);
 
-            if (PF_Core3D.TryFindPath(Grid, GridSize, startGridPosition, targetGridPosition, out var gridPath))
+            if (PF_Core3D.TryFindPath(this, startGridPosition, targetGridPosition, out var gridPath))
             {
-                path = new List<Vector3>();
-                path.Add(start);
+                gridPath = PF_Core3D.GetTrimmedPath(gridPath);
+
+                path = new List<Vector3>() { start };
                 foreach (var gridPosition in gridPath)
                     path.Add(ToWorldPosition(gridPosition));
                 path.Add(target);
@@ -126,6 +143,15 @@ namespace Custom.Pathfinding
 
             path = null;
             return false;
+        }
+
+        private void CheckGrid()
+        {
+            var gsize = GridSize;
+            if (_grid == null || _grid.Length != gsize.x * gsize.y * gsize.z)
+            {
+                _grid = new bool[gsize.x * gsize.y * gsize.z];
+            }
         }
 
         private void Awake()
@@ -167,6 +193,8 @@ namespace Custom.Pathfinding
 
         private void OnDrawGizmosSelected()
         {
+            CheckGrid();
+
             if (showGrid && _grid != null)
             {
                 var gsize = GridSize;
