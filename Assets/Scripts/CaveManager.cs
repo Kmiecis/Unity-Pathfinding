@@ -67,7 +67,7 @@ namespace Common
 
         private void OnDrawGizmos()
         {
-            if (_drawCaveMap)
+            if (_drawCaveMap && _caveMap != null)
             {
                 var width = caveInput.width;
                 var height = caveInput.height;

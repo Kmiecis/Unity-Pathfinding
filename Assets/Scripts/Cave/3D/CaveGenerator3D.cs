@@ -51,8 +51,7 @@ namespace Custom.CaveGeneration
 
         public static void Generate(bool[] map, in Input input)
         {
-            var random = new System.Random(input.seed.GetHashCode());
-            Noisex.GetRandomMap(map, input.width, input.height, input.depth, input.fill, random);
+            Noisex.GetRandomMap(map, input.width, input.height, input.depth, input.fill, input.seed.GetHashCode());
             ApplyBorder(map, input.width, input.height, input.depth, input.borderWidth);
             Noisex.SmoothRandomMap(map, input.width, input.height, input.depth, input.smooths);
 

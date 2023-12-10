@@ -66,19 +66,33 @@ namespace Custom.Pathfinding
             );
         }
 
-        public bool IsWalkable(Vector2Int p)
+        public bool IsWalkable(Vector2Int p, int s)
         {
             var gsize = GridSize;
-            var index = p.x + p.y * gsize.x;
-            return (
-                _grid != null &&
-                p.x > -1 && p.y > -1 &&
-                p.x < gsize.x && p.y < gsize.y &&
-                _grid[index]
-            );
+            for (int dy = 0; dy < s; ++dy)
+            {
+                for (int dx = 0; dx < s; ++dx)
+                {
+                    var x = p.x + dx;
+                    var y = p.y + dy;
+
+                    var index = x + y * gsize.x;
+                    var walkable = (
+                        x > -1 && y > -1 &&
+                        x < gsize.x && y < gsize.y &&
+                        _grid[index]
+                    );
+
+                    if (!walkable)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
-        public int GetWalkCost(Vector2Int p)
+        public int GetWalkCost(Vector2Int p, int s)
         {
             return 0; // To override
         }
@@ -117,12 +131,12 @@ namespace Custom.Pathfinding
             }
         }
         
-        public bool TryFindPath(Vector3 start, Vector3 target, out List<Vector3> path)
+        public bool TryFindPath(Vector3 start, Vector3 target, int size, out List<Vector3> path)
         {
             var startGridPosition = ToGridPosition(start);
             var targetGridPosition = ToGridPosition(target);
 
-            if (PF_Core.TryFindPath(this, startGridPosition, targetGridPosition, out var gridPath))
+            if (PF_Core.TryFindPath(this, startGridPosition, targetGridPosition, size, out var gridPath))
             {
                 gridPath = PF_Core.GetTrimmedPath(gridPath);
 
@@ -162,8 +176,8 @@ namespace Custom.Pathfinding
         }
 
 #if UNITY_EDITOR
-        private static readonly Color kWallColor = Color.yellow.WithAlpha(0.25f);
-        private static readonly Color kRoomColor = Color.cyan.WithAlpha(0.5f);
+        private static readonly Color kWallColor = Color.yellow.WithA(0.25f);
+        private static readonly Color kRoomColor = Color.cyan.WithA(0.5f);
 
         [Header("Editor")]
         public bool autoBake;
@@ -251,7 +265,7 @@ namespace Custom.Pathfinding
                 }
 
                 var rect = new Vector3[Rects.Vertices.Length];
-                Rects.GetVertices(rect, gridPosition, size, Quaternion.identity);
+                Rects.GetVertices(rect, gridPosition + size * 0.5f, size, Quaternion.identity);
                 UnityEditor.Handles.DrawSolidRectangleWithOutline(rect, kWallColor, kWallColor);
 
                 for (int y = 0; y < gridSize.y; ++y)
@@ -264,7 +278,7 @@ namespace Custom.Pathfinding
                         if (vi.x > 0 && vi.y > 0)
                         {
                             var size = Mathx.Mul(vi, unit);
-                            var position = gridPosition + new Vector2(x + 1, y + 1) * unit - size;
+                            var position = gridPosition + new Vector2(x + 1, y + 1) * unit - size * 0.5f;
 
                             Rects.GetVertices(rect, position, size, Quaternion.identity);
                             UnityEditor.Handles.DrawSolidRectangleWithOutline(rect, kRoomColor, kRoomColor);

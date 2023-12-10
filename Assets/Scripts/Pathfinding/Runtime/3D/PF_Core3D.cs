@@ -39,7 +39,7 @@ namespace Custom.Pathfinding
             new Vector3Int( 0,  0,  1),
         };
 
-        public static bool TryFindPath(PF_IMapper3D mapper, Vector3Int start, Vector3Int target, out List<Vector3Int> path)
+        public static bool TryFindPath(PF_IMapper3D mapper, Vector3Int start, Vector3Int target, int size, out List<Vector3Int> path)
         {
             var nodes = new Dictionary<Vector3Int, PF_Node3D>();
 
@@ -73,7 +73,7 @@ namespace Custom.Pathfinding
                         currentNode.z + direction.z
                     );
 
-                    if (!mapper.IsWalkable(neighbourPos))
+                    if (!mapper.IsWalkable(neighbourPos, size))
                         continue;
 
                     if (!nodes.TryGetValue(neighbourPos, out var neighbourNode))
@@ -82,7 +82,7 @@ namespace Custom.Pathfinding
                     if (neighbourNode.state == PF_ENodeState.Checked)
                         continue;
 
-                    var totalCost = currentNode.cost + GetDistanceCost(currentNode, neighbourNode) + mapper.GetWalkCost(neighbourPos);
+                    var totalCost = currentNode.cost + GetDistanceCost(currentNode, neighbourNode) + mapper.GetWalkCost(neighbourPos, size);
                     if (totalCost < neighbourNode.cost)
                     {
                         neighbourNode.link = currentNode;
@@ -165,17 +165,6 @@ namespace Custom.Pathfinding
             return H_MUL * dz + M_MUL * (dx - dz) + L_MUL * (dy - dx);
         }
 
-        private static List<Vector3Int> GetPathFromNode(PF_Node3D node)
-        {
-            var result = new List<Vector3Int>();
-            while (node != null)
-            {
-                result.Add(new Vector3Int(node.x, node.y, node.z));
-                node = node.link;
-            }
-            return result;
-        }
-
         public static List<Vector3Int> GetTrimmedPath(List<Vector3Int> path)
         {
             var result = new List<Vector3Int>();
@@ -201,6 +190,17 @@ namespace Custom.Pathfinding
                 result.Add(path.First());
             }
 
+            return result;
+        }
+
+        private static List<Vector3Int> GetPathFromNode(PF_Node3D node)
+        {
+            var result = new List<Vector3Int>();
+            while (node != null)
+            {
+                result.Add(new Vector3Int(node.x, node.y, node.z));
+                node = node.link;
+            }
             return result;
         }
     }

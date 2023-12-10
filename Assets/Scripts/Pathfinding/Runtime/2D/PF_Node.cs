@@ -3,7 +3,7 @@
 namespace Custom.Pathfinding
 {
     [Serializable]
-    public class PF_Node
+    public class PF_Node : IComparable<PF_Node>
     {
         public readonly int x;
         public readonly int y;
@@ -18,6 +18,15 @@ namespace Custom.Pathfinding
         {
             this.x = x;
             this.y = y;
+        }
+
+        public int CompareTo(PF_Node other)
+        {
+            if (totalcost == other.totalcost)
+            {
+                return cost - other.cost;
+            }
+            return totalcost - other.totalcost;
         }
     }
 }

@@ -7,6 +7,7 @@ namespace Custom.Pathfinding
     public class PF_Agent : MonoBehaviour
     {
         public float speed = 1.0f;
+        public int size = 1;
 
         private List<Vector3> _path;
         private int _node = 0;
@@ -27,7 +28,7 @@ namespace Custom.Pathfinding
                 var startPosition = transform.position;
                 var targetPosition = position;
 
-                if (instance.TryFindPath(startPosition, targetPosition, out _path))
+                if (instance.TryFindPath(startPosition, targetPosition, size, out _path))
                 {
                     Resume();
                     return true;
@@ -107,8 +108,8 @@ namespace Custom.Pathfinding
                 }
 
                 Gizmos.color = Color.green;
-                GizmosUtility.DrawLines(positions);
-                GizmosUtility.DrawWireSpheres(positions, 0.2f);
+                UGizmos.DrawLines(positions);
+                UGizmos.DrawWireSpheres(positions, 0.2f);
             }
         }
 #endif

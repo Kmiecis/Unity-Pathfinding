@@ -24,7 +24,7 @@ namespace Custom.CaveGeneration
             public int width;
             public int height;
             public int smooths;
-            [Range(0.45f, 0.55f)]
+            [Range(0.0f, 1.0f)]
             public float fill;
             public string seed;
 
@@ -50,8 +50,7 @@ namespace Custom.CaveGeneration
 
         public static void Generate(bool[] map, in Input input)
         {
-            var random = new Random(input.seed.GetHashCode());
-            Noisex.GetRandomMap(map, input.width, input.height, input.fill, random);
+            Noisex.GetRandomMap(map, input.width, input.height, input.fill, input.seed.GetHashCode());
             ApplyBorder(map, input.width, input.height, input.borderWidth);
             Noisex.SmoothRandomMap(map, input.width, input.height, input.smooths);
 

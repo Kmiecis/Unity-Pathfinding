@@ -70,7 +70,7 @@ namespace Custom.Pathfinding
             );
         }
 
-        public bool IsWalkable(Vector3Int p)
+        public bool IsWalkable(Vector3Int p, int s)
         {
             var gsize = GridSize;
             var index = Mathx.ToIndex(p.x, p.y, p.z, gsize.x, gsize.y);
@@ -82,7 +82,7 @@ namespace Custom.Pathfinding
             );
         }
 
-        public int GetWalkCost(Vector3Int p)
+        public int GetWalkCost(Vector3Int p, int s)
         {
             return 0; // To override
         }
@@ -125,12 +125,12 @@ namespace Custom.Pathfinding
             }
         }
 
-        public bool TryFindPath(Vector3 start, Vector3 target, out List<Vector3> path)
+        public bool TryFindPath(Vector3 start, Vector3 target, int size, out List<Vector3> path)
         {
             var startGridPosition = ToGridPosition(start);
             var targetGridPosition = ToGridPosition(target);
 
-            if (PF_Core3D.TryFindPath(this, startGridPosition, targetGridPosition, out var gridPath))
+            if (PF_Core3D.TryFindPath(this, startGridPosition, targetGridPosition, size, out var gridPath))
             {
                 gridPath = PF_Core3D.GetTrimmedPath(gridPath);
 
@@ -173,7 +173,7 @@ namespace Custom.Pathfinding
         [Header("Editor")]
         public bool autoBake;
         public bool showGrid;
-        public Color gridColor = Color.cyan.WithAlpha(0.5f);
+        public Color gridColor = Color.cyan.WithA(0.5f);
 
         private void OnValidate()
         {
