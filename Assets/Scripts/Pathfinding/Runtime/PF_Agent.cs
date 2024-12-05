@@ -9,6 +9,9 @@ namespace Custom.Pathfinding
         public float speed = 1.0f;
         public int size = 1;
 
+        private Vector3 _worldTarget;
+        private Vector3 _gridTarget;
+
         private List<Vector3> _path;
         private int _node = 0;
 
@@ -30,6 +33,9 @@ namespace Custom.Pathfinding
 
                 if (instance.TryFindPath(startPosition, targetPosition, size, out _path))
                 {
+                    _worldTarget = position;
+                    _gridTarget = instance.RoundToGrid(_worldTarget);
+
                     Resume();
                     return true;
                 }
@@ -76,6 +82,9 @@ namespace Custom.Pathfinding
                     {
                         _path = null;
                         _node = 0;
+
+                        _worldTarget = default;
+                        _gridTarget = default;
                     }
                 }
             }
@@ -110,6 +119,12 @@ namespace Custom.Pathfinding
                 Gizmos.color = Color.green;
                 UGizmos.DrawLines(positions);
                 UGizmos.DrawWireSpheres(positions, 0.2f);
+
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(_worldTarget, 0.2f);
+
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawWireSphere(_gridTarget, 0.2f);
             }
         }
 #endif

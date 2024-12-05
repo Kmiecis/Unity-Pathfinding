@@ -24,7 +24,7 @@ namespace Common
                 )
                 {
                     var min = instance2D.GridPosition;
-                    var max = min + instance2D.GridSize;
+                    var max = min + instance2D.WorldSize;
 
                     var position = _random.NextVector2(min, max);
 
@@ -37,7 +37,7 @@ namespace Common
                 )
                 {
                     var min = instance3D.GridPosition;
-                    var max = min + instance3D.GridSize;
+                    var max = min + instance3D.WorldSize;
 
                     var position = _random.NextVector3(min, max);
 

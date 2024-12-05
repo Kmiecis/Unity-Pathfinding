@@ -3,31 +3,21 @@ using Common.Extensions;
 using Common.Mathematics;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Custom.Pathfinding
 {
     [ExecuteInEditMode]
+    [RequireComponent(typeof(OnTransformChangedSender))]
     public class PF_Instance3D : MonoBehaviour, PF_IInstance, PF_IMapper3D
     {
-        private static readonly Vector3[] kCorners = new Vector3[]
-        {
-            new Vector3(-0.5f, -0.5f, -0.5f),
-            new Vector3(-0.5f,  0.5f, -0.5f),
-            new Vector3( 0.5f,  0.5f, -0.5f),
-            new Vector3( 0.5f, -0.5f, -0.5f),
-            new Vector3(-0.5f, -0.5f,  0.5f),
-            new Vector3(-0.5f,  0.5f,  0.5f),
-            new Vector3( 0.5f,  0.5f,  0.5f),
-            new Vector3( 0.5f, -0.5f,  0.5f)
-        };
-
-        public Vector3 unit = new Vector3(1.0f, 1.0f, 1.0f);
-        public Vector3 size = new Vector3(16.0f, 16.0f, 16.0f);
+        [SerializeField, FormerlySerializedAs("unit")]
+        private Vector3 _unit = new Vector3(1.0f, 1.0f, 1.0f);
+        [SerializeField, FormerlySerializedAs("size")]
+        private Vector3 _size = new Vector3(16.0f, 16.0f, 16.0f);
 
         [SerializeField, HideInInspector]
         private bool[] _grid;
-
-        private TransformWatcher _transformWatcher;
 
         public bool[] Grid
         {
@@ -36,22 +26,32 @@ namespace Custom.Pathfinding
 
         public Vector3 GridPosition
         {
-            get => transform.position - 0.5f * unit;
+            get => transform.position - 0.5f * _unit;
         }
 
         public Vector3Int GridSize
         {
-            get => Mathx.RoundToInt(Mathx.Div(size, unit));
+            get => Mathx.RoundToInt(Mathx.Div(_size, _unit));
+        }
+
+        public Vector3 WorldSize
+        {
+            get => _size;
         }
 
         public Vector3 ToWorldPosition(Vector3Int p)
         {
-            return transform.position + Mathx.Mul(p, unit);
+            return transform.position + Mathx.Mul(p, _unit);
         }
 
         public Vector3Int ToGridPosition(Vector3 p)
         {
-            return Mathx.FloorToInt(Mathx.Div(p, unit) - transform.position);
+            return Mathx.FloorToInt(Mathx.Div(p, _unit) - transform.position);
+        }
+
+        public Vector3 RoundToGrid(Vector3 position)
+        {
+            return ToWorldPosition(ToGridPosition(position));
         }
 
         public bool Contains(Vector3 p)
@@ -109,11 +109,11 @@ namespace Custom.Pathfinding
                         {
                             var collider = colliders[c];
 
-                            for (int o = 0; o < kCorners.Length && walkable; ++o)
+                            for (int o = 0; o < Cubes.Vertices.Length && walkable; ++o)
                             {
-                                var offset = kCorners[o];
+                                var offset = Cubes.Vertices[o];
 
-                                var position = ToWorldPosition(gnode) + Mathx.Mul(offset, unit);
+                                var position = ToWorldPosition(gnode) + Mathx.Mul(offset, _unit);
                                 walkable = !collider.Contains(position);
                             }
                         }
@@ -154,14 +154,17 @@ namespace Custom.Pathfinding
             }
         }
 
+        private void OnTransformChanged()
+        {
+            if (autoBake)
+            {
+                Bake();
+            }
+        }
+
         private void Awake()
         {
             PF_IInstance.Instances.Add(this);
-        }
-
-        private void Start()
-        {
-            _transformWatcher = new TransformWatcher(transform);
         }
 
         private void OnDestroy()
@@ -173,19 +176,11 @@ namespace Custom.Pathfinding
         [Header("Editor")]
         public bool autoBake;
         public bool showGrid;
-        public Color gridColor = Color.cyan.WithA(0.5f);
+        public Color gridColor = Color.cyan.RGB_(0.5f);
 
         private void OnValidate()
         {
             if (autoBake)
-            {
-                Bake();
-            }
-        }
-
-        private void Update()
-        {
-            if (autoBake && _transformWatcher != null && _transformWatcher.HasChanged)
             {
                 Bake();
             }
@@ -301,8 +296,8 @@ namespace Custom.Pathfinding
 
                             if (vi.x > 0 && vi.y > 0 && vi.z > 0)
                             {
-                                var size = Mathx.Mul(vi, unit);
-                                var position = gridPosition + Mathx.Mul(new Vector3(x + 1, y + 1, z + 1), unit) - size;
+                                var size = Mathx.Mul(vi, _unit);
+                                var position = gridPosition + Mathx.Mul(new Vector3(x + 1, y + 1, z + 1), _unit) - size;
 
                                 Gizmos.DrawCube(position + size * 0.5f, size);
                             }

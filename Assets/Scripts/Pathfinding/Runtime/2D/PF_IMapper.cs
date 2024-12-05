@@ -4,8 +4,8 @@ namespace Custom.Pathfinding
 {
     public interface PF_IMapper
     {
-        bool IsWalkable(Vector2Int position, int size);
+        bool IsPathable(Vector2Int position);
 
-        int GetWalkCost(Vector2Int position, int size);
+        float GetWalkMultiplier(Vector2Int position);
     }
 }

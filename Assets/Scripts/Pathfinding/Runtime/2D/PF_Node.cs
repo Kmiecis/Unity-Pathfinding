@@ -8,11 +8,12 @@ namespace Custom.Pathfinding
         public readonly int x;
         public readonly int y;
 
-        public int cost = int.MaxValue;
-        public int totalcost;
+        public float cost = float.MaxValue; // g cost
+        public float distanceCost = float.MaxValue; // h cost
+        public float totalCost; // f cost
 
         public PF_ENodeState state = PF_ENodeState.Idle;
-        public PF_Node link = null;
+        public PF_Node link;
 
         public PF_Node(int x, int y)
         {
@@ -22,11 +23,10 @@ namespace Custom.Pathfinding
 
         public int CompareTo(PF_Node other)
         {
-            if (totalcost == other.totalcost)
-            {
-                return cost - other.cost;
-            }
-            return totalcost - other.totalcost;
+            var result = totalCost.CompareTo(other.totalCost);
+            if (result == 0)
+                result = cost.CompareTo(other.cost);
+            return result;
         }
     }
 }

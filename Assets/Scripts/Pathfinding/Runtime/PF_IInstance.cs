@@ -8,5 +8,7 @@ namespace Custom.Pathfinding
         public static List<PF_IInstance> Instances = new List<PF_IInstance>();
 
         bool TryFindPath(Vector3 start, Vector3 target, int size, out List<Vector3> path);
+
+        Vector3 RoundToGrid(Vector3 position);
     }
 }

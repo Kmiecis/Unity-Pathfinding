@@ -1,12 +1,12 @@
-﻿using Common;
+﻿using Common.Collections;
 using Common.Extensions;
-using System;
+using Common.Mathematics;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Custom.Pathfinding
 {
-    public static class PF_Core
+    public class PF_Core
     {
         private static readonly Vector2Int[] kDirections = new Vector2Int[]
         {
@@ -20,15 +20,74 @@ namespace Custom.Pathfinding
             new Vector2Int( 1, -1)
         };
 
-        public static bool TryFindPath(PF_IMapper mapper, Vector2Int start, Vector2Int target, int size, out List<Vector2Int> path)
+        public static bool TryFindPath(PF_IMapper map, Vector2Int start, Vector2Int target, int size, out List<Vector2Int> path)
         {
+            path = new List<Vector2Int>();
+            var reached = TryLinkNode(map, start, target, size, out var node);
+            GetPathFromNode(node, path);
+            return reached;
+        }
+
+        public static void SmoothPath(PF_IMapper map, int size, List<Vector2Int> refPath)
+        {
+            for (int i = 0; i < refPath.Count - 2; ++i)
+            {
+                var start = refPath[i];
+                var target = refPath[i + 2];
+
+                if (IsLineWalkable(start, target, size, map))
+                {
+                    refPath.RemoveAt(i + 1);
+                    i -= 1;
+                }
+            }
+        }
+
+        public static void TrimPath(List<Vector2Int> refPath)
+        {
+            var temp = new List<Vector2Int>();
+
+            temp.Add(refPath.First());
+            for (int i = 1; i < refPath.Count - 1; ++i)
+            {
+                var prev = refPath[i - 1];
+                var current = refPath[i];
+                var next = refPath[i + 1];
+
+                var ndx = next.x - current.x;
+                var pdx = current.x - prev.x;
+                var ndy = next.y - current.y;
+                var pdy = current.y - prev.y;
+
+                if (ndx != pdx || ndy != pdy)
+                {
+                    temp.Add(current);
+                }
+            }
+            temp.Add(refPath.Last());
+
+            refPath.Clear();
+            refPath.AddRange(temp);
+        }
+
+        private static bool TryLinkNode(PF_IMapper map, Vector2Int start, Vector2Int target, int size, out PF_Node node)
+        {
+            if (start == target)
+            {
+                node = null;
+                return false;
+            }
+
             var nodes = new Dictionary<Vector2Int, PF_Node>();
 
             var startNode = new PF_Node(start.x, start.y) { cost = 0 };
             var targetNode = new PF_Node(target.x, target.y);
+            var closestNode = targetNode;
 
-            nodes[start] = startNode;
-            nodes[target] = targetNode;
+            var startXY = new Vector2Int(startNode.x, startNode.y);
+            nodes[startXY] = startNode;
+            var targetXY = new Vector2Int(targetNode.x, targetNode.y);
+            nodes[targetXY] = targetNode;
 
             var remaining = new PriorityQueue<PF_Node>();
             remaining.Enqueue(startNode);
@@ -36,12 +95,9 @@ namespace Custom.Pathfinding
             while (remaining.Count > 0)
             {
                 var currentNode = remaining.Dequeue();
-                var currentXY = new Vector2Int(currentNode.x, currentNode.y);
-
-                if (IsTargetReached(currentXY, target, size))
-                    break;
 
                 currentNode.state = PF_ENodeState.Checked;
+                var currentPos = new Vector2Int(currentNode.x, currentNode.y);
 
                 for (int i = 0; i < kDirections.Length; i++)
                 {
@@ -49,155 +105,64 @@ namespace Custom.Pathfinding
 
                     var neighbourXY = new Vector2Int(currentNode.x + direction.x, currentNode.y + direction.y);
 
-                    if (!mapper.IsWalkable(neighbourXY, size))
-                        continue;
-
                     if (!nodes.TryGetValue(neighbourXY, out var neighbourNode))
+                    {
                         nodes[neighbourXY] = neighbourNode = new PF_Node(neighbourXY.x, neighbourXY.y);
+                    }
 
                     if (neighbourNode.state == PF_ENodeState.Checked)
+                    {
                         continue;
+                    }
 
-                    var totalCost = currentNode.cost + GetDistanceCost(currentNode, neighbourNode) + mapper.GetWalkCost(neighbourXY, size);
+                    if (!IsPathable(currentPos, direction, size, map))
+                    {
+                        continue;
+                    }
+
+                    if (IsTargetReached(neighbourXY, targetXY, size))
+                    {
+                        neighbourNode.link = currentNode;
+                        targetNode = neighbourNode;
+                        closestNode = targetNode;
+                        remaining.Clear();
+                        break;
+                    }
+
+                    var walkMultiplier = GetWalkMultiplier(neighbourXY, size, map);
+                    var totalCost = currentNode.cost + GetDistanceCost(currentNode, neighbourNode) * walkMultiplier;
                     if (totalCost < neighbourNode.cost)
                     {
                         neighbourNode.link = currentNode;
                         neighbourNode.cost = totalCost;
-                        neighbourNode.totalcost = totalCost + GetDistanceCost(neighbourNode, targetNode);
+                        neighbourNode.distanceCost = GetDistanceCost(neighbourNode, targetNode);
+                        neighbourNode.totalCost = totalCost + neighbourNode.distanceCost;
 
                         if (neighbourNode.state < PF_ENodeState.Added)
                         {
                             remaining.Enqueue(neighbourNode);
                             neighbourNode.state = PF_ENodeState.Added;
                         }
+
+                        if (closestNode.distanceCost > neighbourNode.distanceCost)
+                        {
+                            closestNode = neighbourNode;
+                        }
                     }
                 }
             }
 
-            SmoothNodes(targetNode, size, mapper);
-
-            path = GetPathFromNode(targetNode);
-            if (path.Count < 2)
-                return false;
-
-            path.RemoveAt(path.Count - 1);
-            return true;
+            node = closestNode;
+            return node == targetNode;
         }
 
-        public static List<Vector2Int> GetTrimmedPath(List<Vector2Int> path)
+        private static float GetDistanceCost(PF_Node a, PF_Node b)
         {
-            var result = new List<Vector2Int>();
+            const float H_MUL = 14.1f;
+            const float L_MUL = 10.0f;
 
-            if (path.First() != path.Last())
-            {
-                result.Add(path.Last());
-                for (int i = path.Count - 2; i > 0; --i)
-                {
-                    var prev = path[i + 1];
-                    var current = path[i];
-                    var next = path[i - 1];
-
-                    if (
-                        next.x - current.x != current.x - prev.x ||
-                        next.y - current.y != current.y - prev.y
-                    )
-                    {
-                        result.Add(current);
-                    }
-                }
-                result.Add(path.First());
-            }
-
-            return result;
-        }
-
-        private static bool IsTargetReached(Vector2Int point, Vector2Int target, int size)
-        {
-            var min = point;
-            var max = point + new Vector2Int(size, size);
-            return (
-                min.x <= target.x && target.x <= max.x &&
-                min.y <= target.y && target.y <= max.y
-            );
-        }
-
-        private static bool IsLineStraight(Vector2Int a, Vector2Int b, Vector2Int c)
-        {
-            return (
-                c.x - b.x == b.x - a.x &&
-                c.y - b.y == b.y - a.y
-            );
-        }
-
-        private static bool IsLineWalkable(Vector2Int a, Vector2Int b, PF_IMapper mapper, int size)
-        {
-            foreach (var point in GetThinLine(a, b))
-            {
-                if (!mapper.IsWalkable(point, size))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private static IEnumerable<Vector2Int> GetThinLine(Vector2Int a, Vector2Int b)
-        {
-            int x = a.x;
-            int y = a.y;
-
-            int dx = b.x - a.x;
-            int dy = b.y - a.y;
-
-            int abs_dx = Mathf.Abs(dx);
-            int abs_dy = Mathf.Abs(dy);
-
-            int min = Mathf.Min(abs_dx, abs_dy);
-            int max = Mathf.Max(abs_dx, abs_dy);
-
-            var step = Vector2Int.zero;
-            var acc_step = Vector2Int.zero;
-
-            if (abs_dy > abs_dx)
-            {
-                step.y = Mathf.RoundToInt(Mathf.Sign(dy));
-                acc_step.x = Mathf.RoundToInt(Mathf.Sign(dx));
-            }
-            else
-            {
-                step.x = Mathf.RoundToInt(Mathf.Sign(dx));
-                acc_step.y = Mathf.RoundToInt(Mathf.Sign(dy));
-            }
-
-            int acc = max / 2;
-
-            for (int i = 0; i < max; i++)
-            {
-                yield return new Vector2Int(x, y);
-
-                x += step.x;
-                y += step.y;
-
-                acc += min;
-                if (acc >= max)
-                {
-                    x += acc_step.x;
-                    y += acc_step.y;
-
-                    acc -= max;
-                }
-            }
-
-            yield return b;
-        }
-
-        private static int GetDistanceCost(PF_Node a, PF_Node b)
-        {
-            const int H_MUL = 14;
-            const int L_MUL = 10;
-
-            int dx = Math.Abs(b.x - a.x);
-            int dy = Math.Abs(b.y - a.y);
+            int dx = Mathf.Abs(b.x - a.x);
+            int dy = Mathf.Abs(b.y - a.y);
 
             if (dx > dy)
             {
@@ -206,60 +171,99 @@ namespace Custom.Pathfinding
             return H_MUL * dx + L_MUL * (dy - dx);
         }
 
-        private static void SmoothNodes(PF_Node node, int size, PF_IMapper mapper)
+        private static bool IsTargetReached(Vector2Int point, Vector2Int target, int size)
         {
-            while (node.link != null && node.link.link != null)
+            var min = point;
+            var max = point + new Vector2Int(size, size);
+            return (
+                min.x <= target.x && target.x < max.x &&
+                min.y <= target.y && target.y < max.y
+            );
+        }
+
+        private static bool IsLineWalkable(Vector2Int a, Vector2Int b, int size, PF_IMapper map)
+        {
+            foreach (var linePoint in Geometry.GetThinLine(a, b))
             {
-                var target = node.link.link;
-
-                var nodeXY = new Vector2Int(node.x, node.y);
-                var targetXY = new Vector2Int(target.x, target.y);
-
-                if (IsLineWalkable(nodeXY, targetXY, mapper, size))
+                foreach (var objectPoint in GetPositions(linePoint, size))
                 {
-                    node.link = target;
+                    var position = new Vector2Int(objectPoint.x, objectPoint.y);
+                    if (!map.IsPathable(position))
+                    {
+                        return false;
+                    }
                 }
-                else
+            }
+            return true;
+        }
+
+        private static bool IsPathable(Vector2Int position, Vector2Int direction, int size, PF_IMapper map)
+        {
+            if (size == 1)
+            {
+                if (direction.x != 0 && direction.y != 0)
                 {
-                    node = node.link;
+                    var dpx = new Vector2Int(position.x + direction.x, position.y);
+                    var dpy = new Vector2Int(position.x, position.y + direction.y);
+                    if (!map.IsPathable(dpx) ||
+                        !map.IsPathable(dpy))
+                    {
+                        return false;
+                    }
+                }
+
+                var dp = new Vector2Int(position.x + direction.x, position.y + direction.y);
+                return map.IsPathable(dp);
+            }
+            else
+            {
+                foreach (var offset in Geometry.GetOffsets(direction, size))
+                {
+                    var dp = new Vector2Int(position.x + offset.x, position.y + offset.y);
+                    if (!map.IsPathable(dp))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        private static float GetWalkMultiplier(Vector2Int position, int size, PF_IMapper map)
+        {
+            if (size == 1)
+            {
+                return map.GetWalkMultiplier(new Vector2Int(position.x, position.y));
+            }
+
+            var result = 0.0f;
+            foreach (var p in GetPositions(position, size))
+            {
+                var point = new Vector2Int(p.x, p.y);
+                result += map.GetWalkMultiplier(point);
+            }
+            return result / (size * size);
+        }
+
+        private static IEnumerable<Vector2Int> GetPositions(Vector2Int position, int size)
+        {
+            for (int dy = 0; dy < size; ++dy)
+            {
+                for (int dx = 0; dx < size; ++dx)
+                {
+                    yield return new Vector2Int(position.x + dx, position.y + dy);
                 }
             }
         }
 
-        private static void TrimNodes(PF_Node node)
+        private static void GetPathFromNode(PF_Node node, List<Vector2Int> outResult)
         {
-            while (node.link != null && node.link.link != null)
-            {
-                var prev = node;
-                var current = node.link;
-                var next = node.link.link;
-
-                var prevXY = new Vector2Int(prev.x, prev.y);
-                var currentXY = new Vector2Int(current.x, current.y);
-                var nextXY = new Vector2Int(next.x, next.y);
-
-                if (IsLineStraight(prevXY, currentXY, nextXY))
-                {
-                    node.link = next;
-                }
-                else
-                {
-                    node = node.link;
-                }
-            }
-        }
-
-        private static List<Vector2Int> GetPathFromNode(PF_Node node)
-        {
-            var result = new List<Vector2Int>();
-
             while (node != null)
             {
-                result.Add(new Vector2Int(node.x, node.y));
+                outResult.Add(new Vector2Int(node.x, node.y));
                 node = node.link;
             }
-
-            return result;
+            outResult.RemoveLast();
         }
     }
 }

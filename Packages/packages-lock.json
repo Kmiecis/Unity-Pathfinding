@@ -1,11 +1,11 @@
 {
   "dependencies": {
-    "com.common.assemblies": {
-      "version": "https://github.com/kmiecis/unity-package-common.git",
+    "com.kmiecis.commons": {
+      "version": "https://github.com/kmiecis/unity-package-commons.git",
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "66ffd99a3ecbfb839e29703c1d8b3b314d16b956"
+      "hash": "f32b2c589ab26de744fe57839163c837f022dab5"
     },
     "com.unity.ext.nunit": {
       "version": "1.0.6",
