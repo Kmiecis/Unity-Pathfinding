@@ -125,7 +125,7 @@ namespace Custom.Pathfinding
             var targetGridPosition = ToGridPosition(target);
 
             PF_Core.TryFindPath(this, startGridPosition, targetGridPosition, size, out var gridPath);
-            PF_Core.TrimPath(gridPath);
+            PF_Core.SmoothPath(this, size, gridPath);
 
             path = gridPath.Parse(v2 => (Vector3)ToWorldPosition(v2));
             path.Reverse();
